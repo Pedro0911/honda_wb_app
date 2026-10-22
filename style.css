@@ -1,0 +1,103 @@
+/* Configurações Globais para visual Mobile-First */
+body {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+.app-wrapper {
+  width: 100%;
+  max-width: 430px; /* Tamanho aproximado de uma tela de smartphone grande */
+  min-height: 100vh;
+}
+
+@media (min-width: 576px) {
+  .app-wrapper {
+    min-height: 840px;
+  }
+}
+
+.app-container {
+  min-height: 100vh;
+  display: flex;
+  position: relative;
+  overflow: hidden;
+}
+
+@media (min-width: 576px) {
+  .app-container {
+    min-height: 840px;
+    border-radius: 28px;
+  }
+}
+
+/* Tela 1 Dark Overlay */
+.tela-1 {
+  background: linear-gradient(180deg, #111827 0%, #030712 100%);
+}
+
+/* Ajustes da Barra de Progresso no Header */
+.progress-steps-container {
+  width: 60%;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 20px;
+}
+
+.progress-line {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 100%;
+  height: 3px;
+  background-color: #e9ecef;
+  transform: translateY(-50%);
+  z-index: 1;
+}
+
+.progress-line-fill {
+  height: 100%;
+  background-color: #dc3545;
+  transition: width 0.3s ease;
+}
+
+.step-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background-color: #e9ecef;
+  z-index: 2;
+  transition: background-color 0.3s ease;
+}
+
+.step-dot.active {
+  background-color: #dc3545;
+}
+
+/* Customização do Slider Range */
+.custom-range::-webkit-slider-thumb {
+  background-color: #dc3545;
+  width: 24px;
+  height: 24px;
+}
+
+.custom-range::-moz-range-thumb {
+  background-color: #dc3545;
+  width: 24px;
+  height: 24px;
+}
+
+/* Efeito de Clique no Card da Moto */
+.hover-card {
+  transition: transform 0.15s ease, border-color 0.15s ease;
+}
+
+.hover-card:active {
+  transform: scale(0.98);
+  border-color: #dc3545 !important;
+}

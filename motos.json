@@ -1,0 +1,271 @@
+{
+  "catalogo_honda": [
+    {
+      "id": "pop-110i-es",
+      "modelo": "POP 110i ES",
+      "planos": [
+        { "parcelas": 12, "valor": 1208.34 },
+        { "parcelas": 18, "valor": 810.27 },
+        { "parcelas": 24, "valor": 611.24 },
+        { "parcelas": 36, "valor": 415.57 },
+        { "parcelas": 48, "valor": 315.44 },
+        { "parcelas": 60, "valor": 256.10 },
+        { "parcelas": 80, "valor": 197.73 }
+      ]
+    },
+    {
+      "id": "biz-125-es",
+      "modelo": "BIZ 125 ES",
+      "planos": [
+        { "parcelas": 12, "valor": 1539.25 },
+        { "parcelas": 18, "valor": 1032.17 },
+        { "parcelas": 24, "valor": 778.64 },
+        { "parcelas": 36, "valor": 529.38 },
+        { "parcelas": 48, "valor": 401.83 },
+        { "parcelas": 60, "valor": 326.23 },
+        { "parcelas": 80, "valor": 251.87 }
+      ]
+    },
+    {
+      "id": "biz-125-ex",
+      "modelo": "BIZ 125 EX",
+      "planos": [
+        { "parcelas": 18, "valor": 1277.57 },
+        { "parcelas": 24, "valor": 963.76 },
+        { "parcelas": 36, "valor": 655.25 },
+        { "parcelas": 48, "valor": 497.36 },
+        { "parcelas": 60, "valor": 403.79 },
+        { "parcelas": 80, "valor": 311.76 }
+      ]
+    },
+    {
+      "id": "elite-125",
+      "modelo": "ELITE 125",
+      "planos": [
+        { "parcelas": 12, "valor": 1905.22 },
+        { "parcelas": 18, "valor": 1091.17 },
+        { "parcelas": 24, "valor": 823.15 },
+        { "parcelas": 36, "valor": 559.64 },
+        { "parcelas": 48, "valor": 424.80 },
+        { "parcelas": 60, "valor": 344.88 },
+        { "parcelas": 80, "valor": 266.27 }
+      ]
+    },
+    {
+      "id": "cg-160-start",
+      "modelo": "CG 160 START",
+      "planos": [
+        { "parcelas": 12, "valor": 1961.20 },
+        { "parcelas": 18, "valor": 1315.11 },
+        { "parcelas": 24, "valor": 992.08 },
+        { "parcelas": 36, "valor": 674.50 },
+        { "parcelas": 48, "valor": 511.98 },
+        { "parcelas": 60, "valor": 415.66 },
+        { "parcelas": 80, "valor": 320.92 }
+      ]
+    },
+    {
+      "id": "cg-160-fan",
+      "modelo": "CG 160 FAN",
+      "planos": [
+        { "parcelas": 12, "valor": 2140.02 },
+        { "parcelas": 18, "valor": 1435.02 },
+        { "parcelas": 24, "valor": 1082.54 },
+        { "parcelas": 36, "valor": 736.00 },
+        { "parcelas": 48, "valor": 558.66 },
+        { "parcelas": 60, "valor": 453.56 },
+        { "parcelas": 80, "valor": 350.18 }
+      ]
+    },
+    {
+      "id": "cg-160-titan",
+      "modelo": "CG 160 TITAN",
+      "planos": [
+        { "parcelas": 12, "valor": 2295.77 },
+        { "parcelas": 18, "valor": 1539.46 },
+        { "parcelas": 24, "valor": 1161.33 },
+        { "parcelas": 36, "valor": 789.57 },
+        { "parcelas": 48, "valor": 599.32 },
+        { "parcelas": 60, "valor": 486.57 },
+        { "parcelas": 80, "valor": 375.67 }
+      ]
+    },
+    {
+      "id": "nxr-160-bros-cbs",
+      "modelo": "NXR 160 BROS CBS",
+      "planos": [
+        { "parcelas": 24, "valor": 1284.52 },
+        { "parcelas": 36, "valor": 873.32 },
+        { "parcelas": 48, "valor": 662.90 },
+        { "parcelas": 60, "valor": 538.18 },
+        { "parcelas": 80, "valor": 415.52 }
+      ]
+    },
+    {
+      "id": "nxr-160-bros-abs",
+      "modelo": "NXR 160 BROS ABS",
+      "planos": [
+        { "parcelas": 24, "valor": 1347.23 },
+        { "parcelas": 36, "valor": 915.95 },
+        { "parcelas": 48, "valor": 695.25 },
+        { "parcelas": 60, "valor": 564.45 },
+        { "parcelas": 80, "valor": 435.80 }
+      ]
+    },
+    {
+      "id": "pcx-std",
+      "modelo": "PCX",
+      "planos": [
+        { "parcelas": 12, "valor": 2131.59 },
+        { "parcelas": 18, "valor": 1429.37 },
+        { "parcelas": 24, "valor": 1078.27 },
+        { "parcelas": 36, "valor": 733.10 },
+        { "parcelas": 48, "valor": 556.46 },
+        { "parcelas": 60, "valor": 451.77 },
+        { "parcelas": 80, "valor": 348.80 }
+      ]
+    },
+    {
+      "id": "pcx-abs",
+      "modelo": "PCX ABS",
+      "planos": [
+        { "parcelas": 24, "valor": 1182.76 },
+        { "parcelas": 36, "valor": 804.14 },
+        { "parcelas": 48, "valor": 610.38 },
+        { "parcelas": 60, "valor": 495.55 },
+        { "parcelas": 80, "valor": 382.60 }
+      ]
+    },
+    {
+      "id": "honda-adv",
+      "modelo": "HONDA ADV",
+      "planos": [
+        { "parcelas": 24, "valor": 1460.50 },
+        { "parcelas": 36, "valor": 992.97 },
+        { "parcelas": 48, "valor": 753.71 },
+        { "parcelas": 60, "valor": 611.91 },
+        { "parcelas": 80, "valor": 472.44 }
+      ]
+    },
+    {
+      "id": "cb-300f-twister-abs",
+      "modelo": "CB 300F TWISTER ABS",
+      "planos": [
+        { "parcelas": 24, "valor": 1493.44 },
+        { "parcelas": 36, "valor": 1015.37 },
+        { "parcelas": 48, "valor": 770.71 },
+        { "parcelas": 60, "valor": 625.72 },
+        { "parcelas": 80, "valor": 483.10 }
+      ]
+    },
+    {
+      "id": "xre-190-standard",
+      "modelo": "XRE 190 STANDARD",
+      "planos": [
+        { "parcelas": 24, "valor": 1365.42 },
+        { "parcelas": 36, "valor": 928.33 },
+        { "parcelas": 48, "valor": 704.64 },
+        { "parcelas": 60, "valor": 572.08 },
+        { "parcelas": 80, "valor": 441.69 }
+      ]
+    },
+    {
+      "id": "xre-300-abs-sahara",
+      "modelo": "XRE 300 ABS SAHARA",
+      "planos": [
+        { "parcelas": 24, "valor": 1802.64 },
+        { "parcelas": 36, "valor": 1225.58 },
+        { "parcelas": 48, "valor": 930.28 },
+        { "parcelas": 60, "valor": 755.26 },
+        { "parcelas": 80, "valor": 583.12 }
+      ]
+    },
+    {
+      "id": "xre-300-sahara-adv",
+      "modelo": "XRE 300 SAHARA ADV",
+      "planos": [
+        { "parcelas": 24, "valor": 1863.13 },
+        { "parcelas": 36, "valor": 1266.71 },
+        { "parcelas": 48, "valor": 961.50 },
+        { "parcelas": 60, "valor": 780.60 },
+        { "parcelas": 80, "valor": 602.68 }
+      ]
+    },
+    {
+      "id": "xr-300l-tornado",
+      "modelo": "XR 300L TORNADO",
+      "planos": [
+        { "parcelas": 24, "valor": 1756.02 },
+        { "parcelas": 36, "valor": 1193.89 },
+        { "parcelas": 48, "valor": 906.22 },
+        { "parcelas": 60, "valor": 735.73 },
+        { "parcelas": 80, "valor": 568.04 }
+      ]
+    },
+    {
+      "id": "crf-300f",
+      "modelo": "CRF 300F",
+      "planos": [
+        { "parcelas": 24, "valor": 1364.03 },
+        { "parcelas": 36, "valor": 927.38 },
+        { "parcelas": 48, "valor": 703.93 },
+        { "parcelas": 60, "valor": 571.49 },
+        { "parcelas": 80, "valor": 441.24 }
+      ]
+    },
+    {
+      "id": "trx-420",
+      "modelo": "TRX 420",
+      "categoria_plano": "ADVANCE",
+      "planos": [{ "parcelas": 72, "valor": 998.13 }]
+    },
+    {
+      "id": "cb-500-hornet",
+      "modelo": "CB 500 HORNET",
+      "categoria_plano": "ADVANCE",
+      "planos": [{ "parcelas": 72, "valor": 787.72 }]
+    },
+    {
+      "id": "cb-750-hornet",
+      "modelo": "CB 750 HORNET",
+      "categoria_plano": "ADVANCE",
+      "planos": [{ "parcelas": 72, "valor": 970.74 }]
+    },
+    {
+      "id": "cb-1000-hornet-70",
+      "modelo": "CB 1000 HORNET 70%",
+      "categoria_plano": "ADVANCE",
+      "planos": [{ "parcelas": 72, "valor": 968.42 }]
+    },
+    {
+      "id": "nx-500",
+      "modelo": "NX 500",
+      "categoria_plano": "ADVANCE",
+      "planos": [{ "parcelas": 72, "valor": 837.67 }]
+    },
+    {
+      "id": "nc-750x",
+      "modelo": "NC 750X",
+      "categoria_plano": "ADVANCE",
+      "planos": [{ "parcelas": 72, "valor": 1023.13 }]
+    },
+    {
+      "id": "xl-750-transalp",
+      "modelo": "XL 750 TRANSALP",
+      "categoria_plano": "ADVANCE",
+      "planos": [{ "parcelas": 72, "valor": 1182.81 }]
+    },
+    {
+      "id": "cb-650r",
+      "modelo": "CB 650R",
+      "categoria_plano": "ADVANCE",
+      "planos": [{ "parcelas": 72, "valor": 1075.68 }]
+    },
+    {
+      "id": "crf-1100l-africa-twin-70",
+      "modelo": "CRF 1100L AFRICA TWIN 70%",
+      "categoria_plano": "ADVANCE",
+      "planos": [{ "parcelas": 72, "valor": 1078.04 }]
+    }
+  ]
+}

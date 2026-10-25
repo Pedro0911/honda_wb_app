@@ -3,6 +3,7 @@
     {
       "id": "pop-110i-es",
       "modelo": "POP 110i ES",
+      "imagem": "img/pop-es.webp",
       "planos": [
         { "parcelas": 12, "valor": 1208.34 },
         { "parcelas": 18, "valor": 810.27 },
@@ -16,6 +17,7 @@
     {
       "id": "biz-125-es",
       "modelo": "BIZ 125 ES",
+      "imagem": "img/biz-es-6.webp",
       "planos": [
         { "parcelas": 12, "valor": 1539.25 },
         { "parcelas": 18, "valor": 1032.17 },
@@ -29,6 +31,7 @@
     {
       "id": "biz-125-ex",
       "modelo": "BIZ 125 EX",
+      "imagem": "img/biz-ex.webp",
       "planos": [
         { "parcelas": 18, "valor": 1277.57 },
         { "parcelas": 24, "valor": 963.76 },
@@ -41,6 +44,7 @@
     {
       "id": "elite-125",
       "modelo": "ELITE 125",
+      "imagem": "img/elite-125.webp",
       "planos": [
         { "parcelas": 12, "valor": 1905.22 },
         { "parcelas": 18, "valor": 1091.17 },
@@ -54,6 +58,7 @@
     {
       "id": "cg-160-start",
       "modelo": "CG 160 START",
+      "imagem": "img/start.webp",
       "planos": [
         { "parcelas": 12, "valor": 1961.20 },
         { "parcelas": 18, "valor": 1315.11 },
@@ -67,6 +72,7 @@
     {
       "id": "cg-160-fan",
       "modelo": "CG 160 FAN",
+      "imagem": "img/fan.webp",
       "planos": [
         { "parcelas": 12, "valor": 2140.02 },
         { "parcelas": 18, "valor": 1435.02 },
@@ -80,6 +86,7 @@
     {
       "id": "cg-160-titan",
       "modelo": "CG 160 TITAN",
+      "imagem": "img/titan.webp",
       "planos": [
         { "parcelas": 12, "valor": 2295.77 },
         { "parcelas": 18, "valor": 1539.46 },
@@ -93,6 +100,7 @@
     {
       "id": "nxr-160-bros-cbs",
       "modelo": "NXR 160 BROS CBS",
+      "imagem": "img/bros-cbs.webp",
       "planos": [
         { "parcelas": 24, "valor": 1284.52 },
         { "parcelas": 36, "valor": 873.32 },
@@ -104,6 +112,7 @@
     {
       "id": "nxr-160-bros-abs",
       "modelo": "NXR 160 BROS ABS",
+      "imagem": "img/bros-abs.webp",
       "planos": [
         { "parcelas": 24, "valor": 1347.23 },
         { "parcelas": 36, "valor": 915.95 },
@@ -115,6 +124,7 @@
     {
       "id": "pcx-std",
       "modelo": "PCX",
+      "imagem": "img/pcx-std.webp",
       "planos": [
         { "parcelas": 12, "valor": 2131.59 },
         { "parcelas": 18, "valor": 1429.37 },
@@ -128,6 +138,7 @@
     {
       "id": "pcx-abs",
       "modelo": "PCX ABS",
+      "imagem": "img/pcx.webp",
       "planos": [
         { "parcelas": 24, "valor": 1182.76 },
         { "parcelas": 36, "valor": 804.14 },
@@ -139,6 +150,7 @@
     {
       "id": "honda-adv",
       "modelo": "HONDA ADV",
+      "imagem": "img/adv.webp",
       "planos": [
         { "parcelas": 24, "valor": 1460.50 },
         { "parcelas": 36, "valor": 992.97 },
@@ -150,6 +162,7 @@
     {
       "id": "cb-300f-twister-abs",
       "modelo": "CB 300F TWISTER ABS",
+      "imagem": "img/cb300.webp",
       "planos": [
         { "parcelas": 24, "valor": 1493.44 },
         { "parcelas": 36, "valor": 1015.37 },
@@ -161,6 +174,7 @@
     {
       "id": "xre-190-standard",
       "modelo": "XRE 190 STANDARD",
+      "imagem": "img/xre.webp",
       "planos": [
         { "parcelas": 24, "valor": 1365.42 },
         { "parcelas": 36, "valor": 928.33 },
@@ -172,6 +186,7 @@
     {
       "id": "xre-300-abs-sahara",
       "modelo": "XRE 300 ABS SAHARA",
+      "imagem": "img/xre-sahara.webp",
       "planos": [
         { "parcelas": 24, "valor": 1802.64 },
         { "parcelas": 36, "valor": 1225.58 },
@@ -183,6 +198,7 @@
     {
       "id": "xre-300-sahara-adv",
       "modelo": "XRE 300 SAHARA ADV",
+      "imagem": "img/xre-adv.webp",
       "planos": [
         { "parcelas": 24, "valor": 1863.13 },
         { "parcelas": 36, "valor": 1266.71 },
@@ -194,6 +210,7 @@
     {
       "id": "xr-300l-tornado",
       "modelo": "XR 300L TORNADO",
+      "imagem": "img/xr-tornado.webp",
       "planos": [
         { "parcelas": 24, "valor": 1756.02 },
         { "parcelas": 36, "valor": 1193.89 },
@@ -205,6 +222,7 @@
     {
       "id": "crf-300f",
       "modelo": "CRF 300F",
+      "imagem": "img/crf.webp",
       "planos": [
         { "parcelas": 24, "valor": 1364.03 },
         { "parcelas": 36, "valor": 927.38 },
@@ -216,54 +234,63 @@
     {
       "id": "trx-420",
       "modelo": "TRX 420",
+      "imagem": "img/trx-400.webp",
       "categoria_plano": "ADVANCE",
       "planos": [{ "parcelas": 72, "valor": 998.13 }]
     },
     {
       "id": "cb-500-hornet",
       "modelo": "CB 500 HORNET",
+      "imagem": "img/cb500-hornet.webp",
       "categoria_plano": "ADVANCE",
       "planos": [{ "parcelas": 72, "valor": 787.72 }]
     },
     {
       "id": "cb-750-hornet",
       "modelo": "CB 750 HORNET",
+      "imagem": "img/hornet750.webp",
       "categoria_plano": "ADVANCE",
       "planos": [{ "parcelas": 72, "valor": 970.74 }]
     },
     {
       "id": "cb-1000-hornet-70",
       "modelo": "CB 1000 HORNET 70%",
+      "imagem": "img/hornet1000.webp",
       "categoria_plano": "ADVANCE",
       "planos": [{ "parcelas": 72, "valor": 968.42 }]
     },
     {
       "id": "nx-500",
       "modelo": "NX 500",
+      "imagem": "img/nx500.webp",
       "categoria_plano": "ADVANCE",
       "planos": [{ "parcelas": 72, "valor": 837.67 }]
     },
     {
       "id": "nc-750x",
       "modelo": "NC 750X",
+      "imagem": "img/nc750.webp",
       "categoria_plano": "ADVANCE",
       "planos": [{ "parcelas": 72, "valor": 1023.13 }]
     },
     {
       "id": "xl-750-transalp",
       "modelo": "XL 750 TRANSALP",
+      "imagem": "img/xl-translap.jpg",
       "categoria_plano": "ADVANCE",
       "planos": [{ "parcelas": 72, "valor": 1182.81 }]
     },
     {
       "id": "cb-650r",
       "modelo": "CB 650R",
+      "imagem": "img/cb650.webp",
       "categoria_plano": "ADVANCE",
       "planos": [{ "parcelas": 72, "valor": 1075.68 }]
     },
     {
       "id": "crf-1100l-africa-twin-70",
       "modelo": "CRF 1100L AFRICA TWIN 70%",
+      "imagem": "img/africa-twin.webp",
       "categoria_plano": "ADVANCE",
       "planos": [{ "parcelas": 72, "valor": 1078.04 }]
     }

@@ -1,59 +1,58 @@
+// --- CONFIGURAÇÃO DO FIREBASE ---
+const firebaseConfig = {
+  apiKey: "AIzaSyCxoCC0gy65F5Sc5AR4V6nkpAF5m54OTj0",
+  authDomain: "honda-app-web.firebaseapp.com",
+  projectId: "honda-app-web",
+  storageBucket: "honda-app-web.firebasestorage.app",
+  messagingSenderId: "358491652828",
+  appId: "1:358491652828:web:732d1ab734b4b8844aaa19"
+};
+
+// Inicializa o Firebase e o banco Firestore
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
 const { createApp } = Vue;
 
 createApp({
   data() {
     return {
       etapa: 1,
-      // Dados coletados do lead ao longo do funil
+      leadId: null, // Guarda o ID gerado pelo Firebase para atualizar o mesmo lead
       lead: {
         nome: '',
         whatsapp: '',
         cidade: '',
         orcamento: 500
       },
-      // Array onde o JSON do catálogo será carregado
       catalogoMotos: [],
-      // Controle de carregamento e erro do JSON
       carregandoCatalogo: true,
       erroCatalogo: false,
-      // Seleções do cliente para a Tela 4
       motoSelecionada: null,
       planoSelecionado: null
     };
   },
   computed: {
-    // Largura dinâmica da barra de progresso do topo
     progressoBarra() {
       if (this.etapa === 2) return '0%';
       if (this.etapa === 3) return '50%';
       if (this.etapa === 4) return '100%';
       return '0%';
     },
-
-    // Filtro reativo: roda automaticamente sempre que 'lead.orcamento' muda na Tela 2
     motosFiltradas() {
       if (!this.catalogoMotos.length) return [];
-
       let resultado = [];
 
       this.catalogoMotos.forEach(moto => {
-        // Filtra os planos que possuem parcela dentro do valor definido no slider
         const planosValidos = moto.planos.filter(p => p.valor <= this.lead.orcamento);
-
         if (planosValidos.length > 0) {
-          // Pega o plano de maior prazo (gera a menor parcela dentro do orçamento do cliente)
           const melhorPlano = planosValidos.reduce((prev, curr) => 
             (prev.parcelas > curr.parcelas) ? prev : curr
           );
-
-          resultado.push({
-            moto: moto,
-            plano: melhorPlano
-          });
+          resultado.push({ moto: moto, plano: melhorPlano });
         }
       });
 
-      // Ordena da parcela mais alta (mais próxima do orçamento) para a mais barata
       return resultado.sort((a, b) => b.plano.valor - a.plano.valor);
     }
   },
@@ -62,30 +61,65 @@ createApp({
       if (this.etapa > 1) this.etapa--;
     },
 
-    avancarEtapa1() {
-      // Validação básica adicional antes de prosseguir
+    // TELA 1: Salva o novo lead no Firestore assim que preenche os dados iniciais
+    async avancarEtapa1() {
       if (!this.lead.nome || !this.lead.whatsapp || !this.lead.cidade) return;
 
-      /* 
-        Futura integração com Firebase:
-        db.collection('leads').add({ ...this.lead, etapa: 1, data: new Date() });
-      */
+      try {
+        const docRef = await db.collection("leads").add({
+          nome: this.lead.nome,
+          whatsapp: this.lead.whatsapp,
+          cidade: this.lead.cidade,
+          etapaAlcancada: 1,
+          criadoEm: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        // Guarda o ID único retornado pelo Firestore
+        this.leadId = docRef.id;
+        console.log("Lead registrado com sucesso! ID:", this.leadId);
+      } catch (error) {
+        console.error("Erro ao salvar lead no Firebase:", error);
+      }
 
       this.etapa = 2;
     },
 
-    avancarEtapa2() {
+    // TELA 2: Atualiza o orçamento no documento do lead existente
+    async avancarEtapa2() {
+      if (this.leadId) {
+        try {
+          await db.collection("leads").doc(this.leadId).update({
+            orcamento: this.lead.orcamento,
+            etapaAlcancada: 2,
+            atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
+          });
+        } catch (error) {
+          console.error("Erro ao atualizar orçamento:", error);
+        }
+      }
       this.etapa = 3;
     },
 
-    selecionarMoto(moto, plano) {
+    // TELA 3 -> 4: Registra a moto e o plano em que o cliente clicou
+    async selecionarMoto(moto, plano) {
       this.motoSelecionada = moto;
       this.planoSelecionado = plano;
 
-      /* 
-        Futura integração com Firebase:
-        db.collection('leads').doc(leadId).update({ moto: moto.modelo, plano, etapa: 4 });
-      */
+      if (this.leadId) {
+        try {
+          await db.collection("leads").doc(this.leadId).update({
+            motoSelecionada: moto.modelo,
+            planoSelecionado: {
+              parcelas: plano.parcelas,
+              valor: plano.valor
+            },
+            etapaAlcancada: 4,
+            atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
+          });
+        } catch (error) {
+          console.error("Erro ao registrar a escolha da moto:", error);
+        }
+      }
 
       this.etapa = 4;
     },
@@ -96,7 +130,7 @@ createApp({
     },
 
     abrirWhatsApp() {
-      const telefone = "5582999679667"; // Seu WhatsApp de atendimento
+      const telefone = "5582999679667";
       const nome = this.lead.nome || "Cliente";
       const moto = this.motoSelecionada.modelo;
       const parcelas = this.planoSelecionado.parcelas;
@@ -109,16 +143,12 @@ createApp({
     }
   },
   mounted() {
-    // Conexão e consumo do arquivo motos.json
     fetch('motos.json')
       .then(response => {
-        if (!response.ok) {
-          throw new Error(`Erro de rede ao carregar JSON: ${response.status}`);
-        }
+        if (!response.ok) throw new Error(`Erro de rede ao carregar JSON: ${response.status}`);
         return response.json();
       })
       .then(data => {
-        // Grava a chave 'catalogo_honda' do JSON na variável reativa do Vue
         this.catalogoMotos = data.catalogo_honda;
         this.carregandoCatalogo = false;
       })

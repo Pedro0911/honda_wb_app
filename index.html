@@ -121,60 +121,63 @@
           </button>
         </section>
 
-        <!-- TELA 3: MOTOS E PLANOS FILTRADOS -->
-        <!-- TELA 3: MOTOS E PLANOS FILTRADOS -->
-<section v-if="etapa === 3" class="p-4 d-flex flex-column justify-content-between flex-grow-1 overflow-auto">
-  <div>
-    <h2 class="fw-bold text-dark fs-4">Motos que cabem no seu orçamento</h2>
-    <p class="small text-muted">Selecionamos opções compatíveis com o valor de <strong class="text-dark">R$ {{ lead.orcamento }}</strong> por mês.</p>
 
-    <!-- Estado de Carregando o JSON -->
-    <div v-if="carregandoCatalogo" class="text-center py-5">
-      <div class="spinner-border text-danger" role="status"></div>
-      <p class="small text-muted mt-2">Carregando opções...</p>
-    </div>
 
-    <!-- Estado de Erro na Leitura do JSON -->
-    <div v-else-if="erroCatalogo" class="alert alert-danger rounded-3 small text-center my-3">
-      Não foi possível carregar os dados das motos. Verifique se o arquivo <strong>motos.json</strong> está na raiz do projeto.
-    </div>
 
-    <!-- Lista de Cards Filtrados pelo Vue -->
-    <div v-else class="d-flex flex-column gap-3 mt-3">
-      <div v-for="item in motosFiltradas" :key="item.moto.id" 
-           @click="selecionarMoto(item.moto, item.plano)" 
-           class="card border rounded-4 p-3 shadow-sm cursor-pointer hover-card">
-        <div class="d-flex align-items-center justify-content-between">
-          <div class="d-flex align-items-center gap-3">
-            <div class="bg-light rounded-3 d-flex align-items-center justify-content-center text-muted" style="width: 60px; height: 60px; font-size: 10px;">
-              Foto
+       <!-- TELA 3: MOTOS E PLANOS FILTRADOS -->
+        <section v-if="etapa === 3" class="p-4 d-flex flex-column justify-content-between flex-grow-1 overflow-auto">
+          <div>
+            <h2 class="fw-bold text-dark fs-4">Motos que cabem no seu orçamento</h2>
+            <p class="small text-muted">Selecionamos opções compatíveis com o valor de <strong class="text-dark">R$ {{ lead.orcamento }}</strong> por mês.</p>
+
+            <!-- Estado de Carregando o JSON -->
+            <div v-if="carregandoCatalogo" class="text-center py-5">
+              <div class="spinner-border text-danger" role="status"></div>
+              <p class="small text-muted mt-2">Carregando opções...</p>
             </div>
-            <div>
-              <h3 class="fw-bold fs-6 text-dark mb-0">{{ item.moto.modelo }}</h3>
-              <p class="text-danger fw-bold mb-0" style="font-size: 11px;">Parcelas a partir de</p>
-              <p class="fw-extrabold fs-5 text-dark mb-0">R$ {{ formatarMoeda(item.plano.valor) }}</p>
-              <p class="text-muted mb-0" style="font-size: 10px;">Prazo: {{ item.plano.parcelas }} meses</p>
+
+            <!-- Estado de Erro na Leitura do JSON -->
+            <div v-else-if="erroCatalogo" class="alert alert-danger rounded-3 small text-center my-3">
+              Não foi possível carregar os dados das motos. Verifique se o arquivo <strong>motos.json</strong> está na raiz do projeto.
+            </div>
+
+            <!-- Lista de Cards Filtrados pelo Vue -->
+            <div v-else class="d-flex flex-column gap-3 mt-3">
+              <div v-for="item in motosFiltradas" :key="item.moto.id" 
+                   @click="selecionarMoto(item.moto, item.plano)" 
+                   class="card border rounded-4 p-3 shadow-sm cursor-pointer hover-card">
+                <div class="d-flex align-items-center justify-content-between">
+                  <div class="d-flex align-items-center gap-3">
+                    <!-- Imagem da Moto na Listagem -->
+                    <div class="bg-light rounded-3 d-flex align-items-center justify-content-center p-1 overflow-hidden" style="width: 70px; height: 70px; flex-shrink: 0;">
+                      <img :src="item.moto.imagem" :alt="item.moto.modelo" class="w-100 h-100 object-fit-contain">
+                    </div>
+                    <div>
+                      <h3 class="fw-bold fs-6 text-dark mb-0">{{ item.moto.modelo }}</h3>
+                      <p class="text-danger fw-bold mb-0" style="font-size: 11px;">Parcelas a partir de</p>
+                      <p class="fw-extrabold fs-5 text-dark mb-0">R$ {{ formatarMoeda(item.plano.valor) }}</p>
+                      <p class="text-muted mb-0" style="font-size: 10px;">Prazo: {{ item.plano.parcelas }} meses</p>
+                    </div>
+                  </div>
+                  <i class="bi bi-chevron-right text-muted fs-5"></i>
+                </div>
+              </div>
+
+              <!-- Mensagem caso o filtro resulte em zero motos -->
+              <div v-if="motosFiltradas.length === 0" class="text-center py-5 text-muted">
+                <p class="fw-bold mb-1">Nenhuma moto encontrada para este valor.</p>
+                <p class="small">Tente aumentar um pouco o valor no passo anterior.</p>
+              </div>
             </div>
           </div>
-          <i class="bi bi-chevron-right text-muted fs-5"></i>
-        </div>
-      </div>
-
-      <!-- Mensagem caso o filtro resulte em zero motos -->
-      <div v-if="motosFiltradas.length === 0" class="text-center py-5 text-muted">
-        <p class="fw-bold mb-1">Nenhuma moto encontrada para este valor.</p>
-        <p class="small">Tente aumentar um pouco o valor no passo anterior.</p>
-      </div>
-    </div>
-  </div>
-</section>
+        </section>
 
         <!-- TELA 4: DETALHES E FECHAMENTO -->
         <section v-if="etapa === 4" class="p-4 d-flex flex-column justify-content-between flex-grow-1 overflow-auto">
           <div v-if="motoSelecionada">
-            <!-- Container Imagem -->
-            <div class="bg-light rounded-4 p-4 text-center mb-3">
-              <span class="text-muted small">[ Foto da Moto ]</span>
+            <!-- Container Imagem Grande -->
+            <div class="bg-light rounded-4 p-3 text-center mb-3 d-flex align-items-center justify-content-center" style="height: 180px; overflow: hidden;">
+              <img :src="motoSelecionada.imagem" :alt="motoSelecionada.modelo" class="img-fluid h-100 object-fit-contain">
             </div>
 
             <h2 class="fw-bold text-dark fs-4 mb-0">{{ motoSelecionada.modelo }}</h2>
@@ -243,6 +246,11 @@
 
   <!-- Vue.js 3 via CDN -->
   <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+
+  <!-- Firebase App e Firestore SDKs (Formato Compat) -->
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+
   <!-- Nosso JavaScript -->
   <script src="app.js"></script>
 </body>

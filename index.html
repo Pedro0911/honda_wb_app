@@ -45,61 +45,84 @@
       <div class="app-content flex-grow-1 d-flex flex-column">
 
           <!-- TELA 1: CADASTRO -->
-        <section v-if="etapa === 1" class="tela-1 p-4 d-flex flex-column justify-content-between flex-grow-1 text-white">
-          <div class="mt-3">
-            <div class="mb-4">
-              <span class="fw-bold text-danger fs-3">HONDA</span>
-              <p class="small text-light opacity-75 mb-0">Consórcio</p>
+      <section v-if="etapa === 1" class="tela-1 p-4 d-flex flex-column justify-content-between flex-grow-1 text-white">
+        <div class="mt-3">
+          <div class="mb-4">
+            <span class="fw-bold text-danger fs-3">HONDA</span>
+            <p class="small text-light opacity-75 mb-0">Consórcio</p>
+          </div>
+          <h1 class="fs-2 fw-bold mb-2">Seu sonho sobre duas rodas, do seu jeito.</h1>
+          <p class="small text-light opacity-75">Preencha seus dados e descubra as melhores opções de consórcio Honda para você.</p>
+        </div>
+
+        <form @submit.prevent="avancarEtapa1" class="bg-white text-dark p-4 rounded-4 shadow-sm my-4">
+          <div class="mb-3">
+            <label class="form-label small fw-semibold text-secondary">Nome completo</label>
+            <div class="input-group">
+              <span class="input-group-text bg-light border-end-0"><i class="bi bi-person text-muted"></i></span>
+              <input type="text" v-model="lead.nome" required placeholder="Ex: João da Silva" class="form-control bg-light border-start-0">
             </div>
-            <h1 class="fs-2 fw-bold mb-2">Seu sonho sobre duas rodas, do seu jeito.</h1>
-            <p class="small text-light opacity-75">Preencha seus dados e descubra as melhores opções de consórcio Honda para você.</p>
           </div>
 
-          <form @submit.prevent="avancarEtapa1" class="bg-white text-dark p-4 rounded-4 shadow-sm my-4">
-            <div class="mb-3">
-              <label class="form-label small fw-semibold text-secondary">Nome completo</label>
-              <div class="input-group">
-                <span class="input-group-text bg-light border-end-0"><i class="bi bi-person text-muted"></i></span>
-                <input type="text" v-model="lead.nome" required placeholder="Ex: João da Silva" class="form-control bg-light border-start-0">
-              </div>
+          <div class="mb-3">
+            <label class="form-label small fw-semibold text-secondary">WhatsApp (com DDD)</label>
+            <div class="input-group">
+              <span class="input-group-text bg-light border-end-0"><i class="bi bi-whatsapp text-muted"></i></span>
+              <input type="tel" v-model="lead.whatsapp" @input="limitarWhatsapp" required placeholder="Ex: 82991234567" maxlength="11" class="form-control bg-light border-start-0">
             </div>
+            <small class="text-muted" style="font-size: 10px;">Apenas números (DDD + 9 dígitos)</small>
+          </div>
 
-            <div class="mb-3">
-              <label class="form-label small fw-semibold text-secondary">WhatsApp</label>
-              <div class="input-group">
-                <span class="input-group-text bg-light border-end-0"><i class="bi bi-whatsapp text-muted"></i></span>
-                <input type="tel" v-model="lead.whatsapp" required placeholder="Ex: (82) 99123-4567" class="form-control bg-light border-start-0">
-              </div>
+          <!-- ESTADO (UF) -->
+          <div class="mb-3">
+            <label class="form-label small fw-semibold text-secondary">Estado (UF)</label>
+            <div class="input-group">
+              <span class="input-group-text bg-light border-end-0"><i class="bi bi-map text-muted"></i></span>
+              <select v-model="lead.uf" @change="carregarCidades" required class="form-select bg-light border-start-0">
+                <option value="" disabled>Selecione seu estado...</option>
+                <option v-for="uf in estados" :key="uf.sigla" :value="uf.sigla">
+                  {{ uf.nome }} ({{ uf.sigla }})
+                </option>
+              </select>
             </div>
+          </div>
 
-            <div class="mb-3">
-              <label class="form-label small fw-semibold text-secondary">Cidade</label>
-              <div class="input-group">
-                <span class="input-group-text bg-light border-end-0"><i class="bi bi-geo-alt text-muted"></i></span>
-                <input type="text" v-model="lead.cidade" required placeholder="Ex: Maceió - AL" class="form-control bg-light border-start-0">
-              </div>
+          <!-- CIDADE -->
+          <div class="mb-3">
+            <label class="form-label small fw-semibold text-secondary">Cidade</label>
+            <div class="input-group">
+              <span class="input-group-text bg-light border-end-0"><i class="bi bi-geo-alt text-muted"></i></span>
+              <select v-model="lead.cidade" :disabled="!lead.uf || carregandoCidades" required class="form-select bg-light border-start-0">
+                <option value="" disabled>
+                  {{ carregandoCidades ? 'Carregando cidades...' : (lead.uf ? 'Selecione sua cidade...' : 'Selecione o estado primeiro') }}
+                </option>
+                <option v-for="cidade in cidades" :key="cidade.id" :value="cidade.nome">
+                  {{ cidade.nome }}
+                </option>
+              </select>
             </div>
+          </div>
 
-            <!-- CHECKBOX DE CONSENTIMENTO LGPD -->
-            <div class="mb-4 bg-light p-3 rounded-3 border text-start">
-              <div class="form-check">
-                <input class="form-check-input" type="checkbox" id="aceiteLgpd" v-model="lead.aceitouTermos" required>
-                <label class="form-check-label text-secondary" for="aceiteLgpd" style="font-size: 12px; line-height: 1.4;">
-                  Concordo em fornecer meus dados para receber simulações personalizadas de consórcio e atendimento via WhatsApp, conforme os 
-                  <a href="#" @click.prevent="exibirModalTermos = true" class="text-danger fw-bold text-decoration-none">Termos de Uso e Privacidade</a>.
-                </label>
-              </div>
+          <!-- CHECKBOX DE CONSENTIMENTO LGPD -->
+          <div class="mb-4 bg-light p-3 rounded-3 border text-start">
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" id="aceiteLgpd" v-model="lead.aceitouTermos" required>
+              <label class="form-check-label text-secondary" for="aceiteLgpd" style="font-size: 12px; line-height: 1.4;">
+                Concordo em fornecer meus dados para receber simulações personalizadas de consórcio e atendimento via WhatsApp, conforme os 
+                <a href="#" @click.prevent="exibirModalTermos = true" class="text-danger fw-bold text-decoration-none">Termos de Uso e Privacidade</a>.
+              </label>
             </div>
+          </div>
 
-            <button type="submit" class="btn btn-danger w-100 py-3 fw-bold rounded-3 shadow-sm" :disabled="!lead.aceitouTermos">
-              Continuar <i class="bi bi-arrow-right ms-1"></i>
-            </button>
-          </form>
+          <button type="submit" class="btn btn-danger w-100 py-3 fw-bold rounded-3 shadow-sm" :disabled="!lead.aceitouTermos || !lead.cidade">
+            Continuar <i class="bi bi-arrow-right ms-1"></i>
+          </button>
+        </form>
 
-          <p class="text-center text-light opacity-50 mb-2" style="font-size: 11px;">
-            <i class="bi bi-shield-lock-fill me-1"></i> Seus dados estão protegidos de acordo com a LGPD e serão usados apenas para contato comercial.
-          </p>
-        </section>
+        <p class="text-center text-light opacity-50 mb-2" style="font-size: 11px;">
+          <i class="bi bi-shield-lock-fill me-1"></i> Seus dados estão protegidos de acordo com a LGPD e serão usados apenas para contato comercial.
+        </p>
+      </section>
 
         <!-- TELA 2: ORÇAMENTO MENSUAL -->
         <section v-if="etapa === 2" class="p-4 d-flex flex-column justify-content-between flex-grow-1">
@@ -252,8 +275,44 @@
         </section>
 
       </div>
+
+      
     </main>
-  </div>
+
+    <!-- MODAL DE TERMOS E PRIVACIDADE (LGPD) -->
+    <div v-if="exibirModalTermos" class="modal d-block bg-dark bg-opacity-75" style="z-index: 1050;">
+      <div class="modal-dialog modal-dialog-scrollable modal-dialog-centered">
+        <div class="modal-content rounded-4 border-0 shadow-lg">
+          <div class="modal-header border-bottom-0">
+            <h5 class="modal-title fw-bold text-dark">Termos de Uso e Privacidade</h5>
+            <button type="button" class="btn-close" @click="exibirModalTermos = false"></button>
+          </div>
+          <div class="modal-body text-start small text-secondary" style="line-height: 1.6;">
+            <h6><strong>1. Coleta de Dados Pessoais</strong></h6>
+            <p>Ao utilizar este simulador, solicitamos seu Nome, número de WhatsApp, Estado e Cidade para personalizar a apresentação das opções de consórcios da Honda.</p>
+
+            <h6><strong>2. Finalidade do Tratamento</strong></h6>
+            <p>Os dados coletados são utilizados exclusivamente para:</p>
+            <ul>
+              <li>Apresentar propostas e simulações de parcelas do consórcio;</li>
+              <li>Realizar o atendimento comercial direto via WhatsApp pelo consultor responsável;</li>
+              <li>Indicar o plano ideal de acordo com o orçamento informado.</li>
+            </ul>
+
+            <h6><strong>3. Armazenamento e Segurança</strong></h6>
+            <p>Seus dados são armazenados de forma segura em infraestrutura em nuvem criptografada (Google Firebase) e não serão comercializados ou compartilhados com terceiros não autorizados.</p>
+
+            <h6><strong>4. Seus Direitos (LGPD)</strong></h6>
+            <p>Você tem o direito de solicitar a atualização, confirmação de tratamento ou a exclusão definitiva dos seus dados a qualquer momento, bastando enviar uma mensagem com o texto <em>"Excluir meus dados"</em> para o nosso atendimento no WhatsApp.</p>
+          </div>
+          <div class="modal-footer border-top-0">
+            <button type="button" class="btn btn-danger w-100 fw-bold rounded-pill py-2" @click="exibirModalTermos = false">Entendi e Concordo</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+  </div><!--div app raiz do VUE-->>
 
   <!-- Vue.js 3 via CDN -->
   <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>

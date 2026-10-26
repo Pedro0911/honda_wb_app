@@ -18,14 +18,18 @@ createApp({
   data() {
     return {
       etapa: 1,
-      leadId: null, // Guarda o ID gerado pelo Firebase para atualizar o mesmo lead
-      exibirModalTermos: false, // Controle de exibição do modal de LGPD
+      leadId: null,
+      exibirModalTermos: false,
+      estados: [],
+      cidades: [],
+      carregandoCidades: false,
       lead: {
         nome: '',
         whatsapp: '',
+        uf: 'AL', // Pré-seleciona Alagoas por padrão
         cidade: '',
         orcamento: 500,
-        aceitouTermos: false // Inicia desmarcado por padrão (LGPD)
+        aceitouTermos: false
       },
       catalogoMotos: [],
       carregandoCatalogo: true,
@@ -63,15 +67,52 @@ createApp({
       if (this.etapa > 1) this.etapa--;
     },
 
-    // TELA 1: Salva o novo lead no Firestore assim que preenche os dados iniciais e aceita os termos
+    // Limita o WhatsApp apenas a números e a 11 dígitos (Padrão Brasil: DDD + 9 dígitos)
+    limitarWhatsapp(event) {
+      const apenasNumeros = event.target.value.replace(/\D/g, '');
+      this.lead.whatsapp = apenasNumeros.slice(0, 11);
+    },
+
+    // Busca todos os estados do Brasil via API do IBGE
+    async carregarEstados() {
+      try {
+        const res = await fetch('https://servicodados.ibge.gov.br/api/v1/localidades/estados?orderBy=nome');
+        const data = await res.json();
+        this.estados = data.map(e => ({ sigla: e.sigla, nome: e.nome }));
+        // Carrega automaticamente as cidades do estado inicial (AL)
+        this.carregarCidades();
+      } catch (err) {
+        console.error("Erro ao carregar estados do IBGE:", err);
+      }
+    },
+
+    // Busca as cidades do estado selecionado via API do IBGE
+    async carregarCidades() {
+      if (!this.lead.uf) return;
+      this.carregandoCidades = true;
+      this.cidades = [];
+      this.lead.cidade = ''; // Reseta a cidade ao trocar de estado
+
+      try {
+        const res = await fetch(`https://servicodados.ibge.gov.br/api/v1/localidades/estados/${this.lead.uf}/municipios?orderBy=nome`);
+        this.cidades = await res.json();
+      } catch (err) {
+        console.error("Erro ao carregar cidades do IBGE:", err);
+      } finally {
+        this.carregandoCidades = false;
+      }
+    },
+
+    // TELA 1: Salva o novo lead no Firestore com UF, Cidade e Consentimento LGPD
     async avancarEtapa1() {
-      if (!this.lead.nome || !this.lead.whatsapp || !this.lead.cidade || !this.lead.aceitouTermos) return;
+      if (!this.lead.nome || !this.lead.whatsapp || !this.lead.uf || !this.lead.cidade || !this.lead.aceitouTermos) return;
 
       try {
         const docRef = await db.collection("leads").add({
           nome: this.lead.nome,
           whatsapp: this.lead.whatsapp,
-          cidade: this.lead.cidade,
+          uf: this.lead.uf,
+          cidade: `${this.lead.cidade} - ${this.lead.uf}`,
           aceitouTermos: true,
           termoVersao: "v1.0 - 2026",
           dataConsentimento: firebase.firestore.FieldValue.serverTimestamp(),
@@ -79,9 +120,8 @@ createApp({
           criadoEm: firebase.firestore.FieldValue.serverTimestamp()
         });
 
-        // Guarda o ID único retornado pelo Firestore
         this.leadId = docRef.id;
-        console.log("Lead e consentimento LGPD registrados com sucesso! ID:", this.leadId);
+        console.log("Lead registrado com sucesso! ID:", this.leadId);
       } catch (error) {
         console.error("Erro ao salvar lead no Firebase:", error);
       }
@@ -148,6 +188,10 @@ createApp({
     }
   },
   mounted() {
+    // Carrega a lista de estados e cidades do IBGE
+    this.carregarEstados();
+
+    // Carrega o catálogo de motos
     fetch('motos.json')
       .then(response => {
         if (!response.ok) throw new Error(`Erro de rede ao carregar JSON: ${response.status}`);

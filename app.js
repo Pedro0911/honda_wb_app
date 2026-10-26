@@ -19,11 +19,13 @@ createApp({
     return {
       etapa: 1,
       leadId: null, // Guarda o ID gerado pelo Firebase para atualizar o mesmo lead
+      exibirModalTermos: false, // Controle de exibição do modal de LGPD
       lead: {
         nome: '',
         whatsapp: '',
         cidade: '',
-        orcamento: 500
+        orcamento: 500,
+        aceitouTermos: false // Inicia desmarcado por padrão (LGPD)
       },
       catalogoMotos: [],
       carregandoCatalogo: true,
@@ -61,22 +63,25 @@ createApp({
       if (this.etapa > 1) this.etapa--;
     },
 
-    // TELA 1: Salva o novo lead no Firestore assim que preenche os dados iniciais
+    // TELA 1: Salva o novo lead no Firestore assim que preenche os dados iniciais e aceita os termos
     async avancarEtapa1() {
-      if (!this.lead.nome || !this.lead.whatsapp || !this.lead.cidade) return;
+      if (!this.lead.nome || !this.lead.whatsapp || !this.lead.cidade || !this.lead.aceitouTermos) return;
 
       try {
         const docRef = await db.collection("leads").add({
           nome: this.lead.nome,
           whatsapp: this.lead.whatsapp,
           cidade: this.lead.cidade,
+          aceitouTermos: true,
+          termoVersao: "v1.0 - 2026",
+          dataConsentimento: firebase.firestore.FieldValue.serverTimestamp(),
           etapaAlcancada: 1,
           criadoEm: firebase.firestore.FieldValue.serverTimestamp()
         });
 
         // Guarda o ID único retornado pelo Firestore
         this.leadId = docRef.id;
-        console.log("Lead registrado com sucesso! ID:", this.leadId);
+        console.log("Lead e consentimento LGPD registrados com sucesso! ID:", this.leadId);
       } catch (error) {
         console.error("Erro ao salvar lead no Firebase:", error);
       }

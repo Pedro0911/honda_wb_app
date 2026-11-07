@@ -14,6 +14,8 @@ body {
   min-height: 100vh;
 }
 
+
+
 @media (min-width: 576px) {
   .app-wrapper {
     min-height: 840px;
@@ -100,4 +102,10 @@ body {
 .hover-card:active {
   transform: scale(0.98);
   border-color: #dc3545 !important;
+}
+
+/* Ajuste para a foto em destaque da Tela 4 */
+.img-moto-destaque {
+  transition: transform 0.3s ease;
+  transform: scale(1.08); /* Aumenta a foto em 8% para ocupar quase todo o card cinza */
 }

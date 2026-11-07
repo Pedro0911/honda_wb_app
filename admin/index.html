@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Zappmotos Admin - Painel do Consultor</title>
+
+  <!-- Bootstrap 5 CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Bootstrap Icons -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+  
+  <style>
+    body { background-color: #f8f9fa; font-family: system-ui, -apple-system, sans-serif; }
+    .card-stat { transition: transform 0.2s; }
+    .card-stat:hover { transform: translateY(-3px); }
+    .nav-pills .nav-link.active { background-color: #dc3545; }
+    .nav-pills .nav-link { color: #495057; font-weight: 600; }
+  </style>
+</head>
+<body>
+
+  <div id="app">
+
+    <!-- ==================== TELA DE AUTENTICAÇÃO (LOGIN / CADASTRO) ==================== -->
+    <div v-if="!consultorLogado" class="container min-vh-100 d-flex align-items-center justify-content-center py-5 px-3">
+      <div class="card border-0 shadow-lg rounded-4 p-4 p-md-5 w-100" style="max-width: 480px; background: white;">
+        
+        <div class="text-center mb-4">
+          <h2 class="fw-bold mb-0 text-dark"><span class="text-danger">ZAPP</span>MOTOS</h2>
+          <p class="text-muted small">Painel de Gestão do Consultor Honda</p>
+        </div>
+
+        <!-- Abas Login / Criar Conta -->
+        <ul class="nav nav-pills nav-justified mb-4 bg-light p-1 rounded-3">
+          <li class="nav-item">
+            <button class="nav-link py-2" :class="{ active: abaAuth === 'login' }" @click="abaAuth = 'login'">Entrar</button>
+          </li>
+          <li class="nav-item">
+            <button class="nav-link py-2" :class="{ active: abaAuth === 'cadastro' }" @click="abaAuth = 'cadastro'">Criar Conta</button>
+          </li>
+        </ul>
+
+        <!-- FORMS DE LOGIN -->
+        <form v-if="abaAuth === 'login'" @submit.prevent="realizarLogin">
+          <div class="mb-3">
+            <label class="form-label small fw-semibold text-secondary">CPF</label>
+            <input type="text" v-model="formLogin.cpf" @input="mascararCpf('formLogin')" placeholder="000.000.000-00" required maxlength="14" class="form-control form-control-lg bg-light">
+          </div>
+          <div class="mb-4">
+            <label class="form-label small fw-semibold text-secondary">Senha</label>
+            <input type="password" v-model="formLogin.senha" placeholder="Sua senha de acesso" required class="form-control form-control-lg bg-light">
+          </div>
+          <button type="submit" class="btn btn-danger btn-lg w-100 fw-bold rounded-3 shadow-sm" :disabled="carregandoAuth">
+            {{ carregandoAuth ? 'Entrando...' : 'Acessar Painel' }}
+          </button>
+        </form>
+
+        <!-- FORM DE CADASTRO (#1) -->
+        <form v-if="abaAuth === 'cadastro'" @submit.prevent="cadastrarConsultor">
+          <div class="mb-3">
+            <label class="form-label small fw-semibold text-secondary">Seu Nome Completo</label>
+            <input type="text" v-model="formCadastro.nome" placeholder="Ex: Pedro Silva" required class="form-control bg-light">
+          </div>
+          <div class="mb-3">
+            <label class="form-label small fw-semibold text-secondary">CPF (Será seu login)</label>
+            <input type="text" v-model="formCadastro.cpf" @input="mascararCpf('formCadastro')" placeholder="000.000.000-00" required maxlength="14" class="form-control bg-light">
+          </div>
+          <div class="mb-3">
+            <label class="form-label small fw-semibold text-secondary">Nome da Concessionária Honda</label>
+            <input type="text" v-model="formCadastro.empresaHonda" placeholder="Ex: Honda Alagoas / Grupo X" required class="form-control bg-light">
+          </div>
+          <div class="mb-3">
+            <label class="form-label small fw-semibold text-secondary">WhatsApp (Atendimento aos Leads)</label>
+            <input type="tel" v-model="formCadastro.whatsapp" @input="limitarWhatsapp" placeholder="Ex: 82999679667" required maxlength="11" class="form-control bg-light">
+          </div>
+          <div class="mb-4">
+            <label class="form-label small fw-semibold text-secondary">Crie uma Senha</label>
+            <input type="password" v-model="formCadastro.senha" placeholder="Mínimo 6 caracteres" required minlength="6" class="form-control bg-light">
+          </div>
+          <button type="submit" class="btn btn-danger w-100 py-3 fw-bold rounded-3 shadow-sm" :disabled="carregandoAuth">
+            {{ carregandoAuth ? 'Cadastrando...' : 'Criar Minha Conta Zappmotos' }}
+          </button>
+        </form>
+
+      </div>
+    </div>
+
+
+    <!-- ==================== PAINEL ADMINISTRATIVO (LOGADO) ==================== -->
+    <div v-else class="container-fluid py-4 px-md-5">
+
+      <!-- Header Fixo -->
+      <header class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 pb-3 border-bottom bg-white p-3 rounded-4 shadow-sm gap-3">
+        <div class="d-flex align-items-center gap-3">
+          <div class="bg-danger text-white rounded-3 p-2 d-flex align-items-center justify-content-center" style="width: 44px; height: 44px;">
+            <i class="bi bi-speedometer2 fs-4"></i>
+          </div>
+          <div>
+            <h4 class="fw-bold mb-0 text-dark"><span class="text-danger">ZAPP</span>MOTOS Admin</h4>
+            <small class="text-muted">Consultor: <strong>{{ consultorLogado.nome }}</strong> ({{ consultorLogado.empresaHonda }})</small>
+          </div>
+        </div>
+
+        <div class="d-flex gap-2 flex-wrap">
+          <button @click="abaAtual = 'leads'" class="btn rounded-pill px-3 fw-semibold" :class="abaAtual === 'leads' ? 'btn-danger' : 'btn-outline-secondary'">
+            <i class="bi bi-people me-1"></i> Leads
+          </button>
+          <button @click="abaAtual = 'link'" class="btn rounded-pill px-3 fw-semibold" :class="abaAtual === 'link' ? 'btn-danger' : 'btn-outline-secondary'">
+            <i class="bi bi-link-45deg me-1"></i> Meu Link Exclusivo
+          </button>
+          <button @click="abaAtual = 'perfil'" class="btn rounded-pill px-3 fw-semibold" :class="abaAtual === 'perfil' ? 'btn-danger' : 'btn-outline-secondary'">
+            <i class="bi bi-person me-1"></i> Perfil
+          </button>
+          <button @click="deslogar" class="btn btn-light text-danger rounded-pill px-3">
+            <i class="bi bi-box-arrow-right"></i> Sair
+          </button>
+        </div>
+      </header>
+
+      <!-- ABA 1: TABELA DE LEADS & DASHBOARD (#2) -->
+      <main v-if="abaAtual === 'leads'">
+        
+        <!-- Cards de Métricas -->
+        <div class="row g-3 mb-4">
+          <div class="col-6 col-md-4">
+            <div class="card border-0 shadow-sm rounded-4 p-3 bg-white card-stat">
+              <span class="text-muted small fw-semibold">Total de Leads</span>
+              <h3 class="fw-extrabold text-dark mb-0 mt-1">{{ leads.length }}</h3>
+            </div>
+          </div>
+          <div class="col-6 col-md-4">
+            <div class="card border-0 shadow-sm rounded-4 p-3 bg-white card-stat">
+              <span class="text-muted small fw-semibold">Leads Novos (Hoje)</span>
+              <h3 class="fw-extrabold text-success mb-0 mt-1">{{ totalLeadsHoje }}</h3>
+            </div>
+          </div>
+          <div class="col-12 col-md-4">
+            <div class="card border-0 shadow-sm rounded-4 p-3 bg-white card-stat">
+              <span class="text-muted small fw-semibold">Moto Mais Clicada</span>
+              <h5 class="fw-bold text-danger mb-0 mt-1 text-truncate">{{ motoMaisClicada }}</h5>
+            </div>
+          </div>
+        </div>
+
+        <!-- Filtros e Ações -->
+        <div class="card border-0 shadow-sm rounded-4 p-3 bg-white mb-4">
+          <div class="row g-2 align-items-center">
+            <div class="col-md-4">
+              <input type="text" v-model="filtroBusca" placeholder="Buscar por nome, cidade ou telefone..." class="form-control bg-light">
+            </div>
+            <div class="col-6 col-md-2">
+              <select v-model="filtroMoto" class="form-select bg-light">
+                <option value="">Todas as Motos</option>
+                <option v-for="m in listaMotosUnicas" :key="m" :value="m">{{ m }}</option>
+              </select>
+            </div>
+            <div class="col-6 col-md-2">
+              <select v-model="filtroEtapa" class="form-select bg-light">
+                <option value="">Todas as Etapas</option>
+                <option value="1">Etapa 1 (Cadastro)</option>
+                <option value="2">Etapa 2 (Orçamento)</option>
+                <option value="3">Etapa 3 (Motos)</option>
+                <option value="4">Etapa 4 (WhatsApp)</option>
+              </select>
+            </div>
+            <div class="col-md-4 text-md-end d-flex gap-2">
+              <button @click="carregarLeads" class="btn btn-outline-secondary rounded-pill w-100" :disabled="carregando">
+                <i class="bi bi-arrow-clockwise me-1"></i> Atualizar
+              </button>
+              <button @click="exportarCSV" class="btn btn-success rounded-pill w-100 fw-semibold" :disabled="leadsFiltrados.length === 0">
+                <i class="bi bi-file-earmark-spreadsheet me-1"></i> CSV / Excel
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tabela Responsiva de Leads -->
+        <div class="card border-0 shadow-sm rounded-4 bg-white overflow-hidden">
+          <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+              <thead class="table-light">
+                <tr class="small text-uppercase text-secondary">
+                  <th class="ps-4">Data / Hora</th>
+                  <th>Nome</th>
+                  <th>Contato</th>
+                  <th>Cidade / UF</th>
+                  <th>Moto de Interesse</th>
+                  <th>Etapa Alcançada</th>
+                  <th>LGPD</th>
+                  <th class="text-end pe-4">Atender</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-if="carregando">
+                  <td colspan="8" class="text-center py-5 text-muted">
+                    <div class="spinner-border text-danger" role="status"></div>
+                    <p class="small mt-2">Carregando seus leads exclusivos...</p>
+                  </td>
+                </tr>
+                <tr v-else-if="leadsFiltrados.length === 0">
+                  <td colspan="8" class="text-center py-5 text-muted">
+                    Nenhum lead encontrado para este filtro.
+                  </td>
+                </tr>
+                <tr v-for="lead in leadsFiltrados" :key="lead.id">
+                  <td class="ps-4 small text-muted">{{ formatarData(lead.dataCriacao) }}</td>
+                  <td class="fw-bold text-dark">{{ lead.nome }}</td>
+                  <td class="font-monospace small">{{ formatarTelefone(lead.whatsapp) }}</td>
+                  <td class="small">{{ lead.cidade }} - <strong>{{ lead.uf }}</strong></td>
+                  <td>
+                    <span class="badge bg-danger-subtle text-danger fw-bold" v-if="lead.motoInteresse">
+                      {{ lead.motoInteresse }} ({{ lead.planoMeses }}x)
+                    </span>
+                    <span class="text-muted small" v-else>Em navegação</span>
+                  </td>
+                  <td>
+                    <span class="badge" :class="corEtapa(lead.etapaAlcancada)">
+                      Etapa {{ lead.etapaAlcancada || 1 }}/4
+                    </span>
+                  </td>
+                  <td>
+                    <span class="badge bg-success-subtle text-success" v-if="lead.aceitouTermos">
+                      <i class="bi bi-check-circle me-1"></i> Sim
+                    </span>
+                  </td>
+                  <td class="text-end pe-4">
+                    <a :href="gerarLinkZap(lead)" target="_blank" class="btn btn-success btn-sm rounded-pill px-3 fw-bold">
+                      <i class="bi bi-whatsapp me-1"></i> Atender
+                    </a>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </main>
+
+
+      <!-- ABA 2: MEU LINK EXCLUSIVO (#3) -->
+      <main v-if="abaAtual === 'link'" class="max-w-lg mx-auto py-3">
+        <div class="card border-0 shadow-sm rounded-4 p-4 p-md-5 bg-white text-center">
+          <div class="bg-danger-subtle text-danger rounded-circle mx-auto p-3 d-flex align-items-center justify-content-center mb-3" style="width: 64px; height: 64px;">
+            <i class="bi bi-link-45deg fs-1"></i>
+          </div>
+          <h4 class="fw-bold text-dark">Seu Link de Captação Exclusivo</h4>
+          <p class="text-muted small mb-4">
+            Copie o link abaixo e coloque na sua **bio do Instagram**, status do WhatsApp ou anúncios do Meta Ads. Todos os clientes que entrarem por ele serão direcionados para o seu WhatsApp e salvos na sua tabela!
+          </p>
+
+          <div class="input-group mb-3">
+            <input type="text" :value="gerarMeuLinkPublico()" readonly class="form-control form-control-lg bg-light text-primary font-monospace fs-6">
+            <button class="btn btn-danger px-4 fw-bold" @click="copiarLink">
+              <i class="bi bi-clipboard me-1"></i> {{ copiado ? 'Copiado!' : 'Copiar' }}
+            </button>
+          </div>
+          <small class="text-success" v-if="copiado"><i class="bi bi-check-circle-fill me-1"></i> Link copiado para a área de transferência!</small>
+        </div>
+      </main>
+
+
+      <!-- ABA 3: PERFIL DO CONSULTOR (#2) -->
+      <main v-if="abaAtual === 'perfil'" class="max-w-lg mx-auto py-3">
+        <div class="card border-0 shadow-sm rounded-4 p-4 p-md-5 bg-white">
+          <h4 class="fw-bold text-dark mb-4">Seus Dados de Cadastro</h4>
+
+          <form @submit.prevent="atualizarPerfil">
+            <div class="mb-3">
+              <label class="form-label small fw-semibold text-secondary">CPF (Não alterável)</label>
+              <input type="text" :value="consultorLogado.cpf" disabled class="form-control bg-light">
+            </div>
+            <div class="mb-3">
+              <label class="form-label small fw-semibold text-secondary">Nome Completo</label>
+              <input type="text" v-model="formPerfil.nome" required class="form-control">
+            </div>
+            <div class="mb-3">
+              <label class="form-label small fw-semibold text-secondary">Concessionária Honda</label>
+              <input type="text" v-model="formPerfil.empresaHonda" required class="form-control">
+            </div>
+            <div class="mb-4">
+              <label class="form-label small fw-semibold text-secondary">WhatsApp (Redirecionamento do Lead)</label>
+              <input type="tel" v-model="formPerfil.whatsapp" required maxlength="11" class="form-control">
+            </div>
+
+            <hr class="my-4">
+            <h6 class="fw-bold text-dark mb-3">Alterar Senha</h6>
+            <div class="mb-3">
+              <label class="form-label small fw-semibold text-secondary">Nova Senha (Deixe em branco se não quiser mudar)</label>
+              <input type="password" v-model="formPerfil.novaSenha" minlength="6" placeholder="Mínimo 6 caracteres" class="form-control">
+            </div>
+
+            <button type="submit" class="btn btn-danger w-100 py-3 fw-bold rounded-3 shadow-sm mt-3" :disabled="salvandoPerfil">
+              {{ salvandoPerfil ? 'Salvando...' : 'Atualizar Meus Dados' }}
+            </button>
+          </form>
+        </div>
+      </main>
+
+    </div><!-- Fim da div id="app" -->
+
+  <!-- ==================== SCRIPTS (Devem ficar FORA do #app) ==================== -->
+  <!-- Vue 3 & Firebase Compat SDKs -->
+  <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+
+  <!-- Lógica do Painel Admin -->
+  <script src="admin.js"></script>
+</body>
+</html>

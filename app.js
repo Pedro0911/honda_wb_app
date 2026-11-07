@@ -9,7 +9,9 @@ const firebaseConfig = {
 };
 
 // Inicializa o Firebase e o banco Firestore
-firebase.initializeApp(firebaseConfig);
+if (!firebase.apps.length) {
+  firebase.initializeApp(firebaseConfig);
+}
 const db = firebase.firestore();
 
 const { createApp } = Vue;
@@ -19,6 +21,8 @@ createApp({
     return {
       etapa: 1,
       leadId: null,
+      consultorRef: '',
+      consultorAtual: null,
       exibirModalTermos: false,
       estados: [],
       cidades: [],
@@ -50,6 +54,7 @@ createApp({
       let resultado = [];
 
       this.catalogoMotos.forEach(moto => {
+        if (!moto.planos || !moto.planos.length) return;
         const planosValidos = moto.planos.filter(p => p.valor <= this.lead.orcamento);
         if (planosValidos.length > 0) {
           const melhorPlano = planosValidos.reduce((prev, curr) => 
@@ -63,6 +68,31 @@ createApp({
     }
   },
   methods: {
+    // 🔍 Identifica o consultor dono do link via query string segura (?ref=slug)
+    async verificarConsultorRef() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const ref = urlParams.get('ref');
+      if (ref) {
+        this.consultorRef = ref; // Guarda o código da URL
+        try {
+          // Procura na coleção consultores onde o campo 'slug' é igual ao parâmetro da URL
+          const snapshot = await db.collection('consultores').where('slug', '==', ref).limit(1).get();
+          
+          if (!snapshot.empty) {
+            this.consultorAtual = snapshot.docs[0].data();
+          } else {
+            // Fallback de compatibilidade caso alguém acesse com CPF antigo
+            const docCpf = await db.collection('consultores').doc(ref.replace(/\D/g, '')).get();
+            if (docCpf.exists) {
+              this.consultorAtual = docCpf.data();
+            }
+          }
+        } catch (e) {
+          console.error("Erro ao buscar consultor dono do link:", e);
+        }
+      }
+    },
+
     voltarEtapa() {
       if (this.etapa > 1) this.etapa--;
     },
@@ -79,7 +109,6 @@ createApp({
         const res = await fetch('https://servicodados.ibge.gov.br/api/v1/localidades/estados?orderBy=nome');
         const data = await res.json();
         this.estados = data.map(e => ({ sigla: e.sigla, nome: e.nome }));
-        // Carrega automaticamente as cidades do estado inicial (AL)
         this.carregarCidades();
       } catch (err) {
         console.error("Erro ao carregar estados do IBGE:", err);
@@ -91,7 +120,6 @@ createApp({
       if (!this.lead.uf) return;
       this.carregandoCidades = true;
       this.cidades = [];
-      this.lead.cidade = ''; // Reseta a cidade ao trocar de estado
 
       try {
         const res = await fetch(`https://servicodados.ibge.gov.br/api/v1/localidades/estados/${this.lead.uf}/municipios?orderBy=nome`);
@@ -103,21 +131,28 @@ createApp({
       }
     },
 
-    // TELA 1: Salva o novo lead no Firestore com UF, Cidade e Consentimento LGPD
+    // TELA 1: Salva o novo lead no Firestore vinculado de forma padronizada ao consultor
     async avancarEtapa1() {
       if (!this.lead.nome || !this.lead.whatsapp || !this.lead.uf || !this.lead.cidade || !this.lead.aceitouTermos) return;
 
+      // Padronização: Usa o slug oficial do consultor carregado, ou o ref da URL, ou 'PADRAO'
+      const consultorIdPadrao = this.consultorAtual 
+        ? (this.consultorAtual.slug || this.consultorAtual.cpf) 
+        : (this.consultorRef || 'PADRAO');
+
       try {
         const docRef = await db.collection("leads").add({
+          consultorCpf: consultorIdPadrao, // Padronizado com o slug ou identificador correto
           nome: this.lead.nome,
           whatsapp: this.lead.whatsapp,
           uf: this.lead.uf,
-          cidade: `${this.lead.cidade} - ${this.lead.uf}`,
+          cidade: this.lead.cidade,
           aceitouTermos: true,
           termoVersao: "v1.0 - 2026",
           dataConsentimento: firebase.firestore.FieldValue.serverTimestamp(),
           etapaAlcancada: 1,
-          criadoEm: firebase.firestore.FieldValue.serverTimestamp()
+          dataCriacao: firebase.firestore.FieldValue.serverTimestamp(),
+          atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
         });
 
         this.leadId = docRef.id;
@@ -153,7 +188,8 @@ createApp({
       if (this.leadId) {
         try {
           await db.collection("leads").doc(this.leadId).update({
-            motoSelecionada: moto.modelo,
+            motoInteresse: moto.modelo,
+            planoMeses: plano.parcelas,
             planoSelecionado: {
               parcelas: plano.parcelas,
               valor: plano.valor
@@ -174,24 +210,32 @@ createApp({
       return valor.toFixed(2).replace('.', ',');
     },
 
+    // 📲 Direciona o WhatsApp para o consultor responsável pelo link
     abrirWhatsApp() {
-      const telefone = "5582999679667";
-      const nome = this.lead.nome || "Cliente";
-      const moto = this.motoSelecionada.modelo;
-      const parcelas = this.planoSelecionado.parcelas;
-      const valor = this.formatarMoeda(this.planoSelecionado.valor);
+      const numDestino = this.consultorAtual && this.consultorAtual.whatsapp
+        ? this.consultorAtual.whatsapp.replace(/\D/g, '')
+        : '82999679667'; // Fallback padrão caso o lead entre direto
 
-      const mensagem = `Olá, Pedro! Me chamo *${nome}*. Fiz uma simulação no site para a *${moto}* com parcelas de *R$ ${valor}* em *${parcelas}x*. Como faço para contratar?`;
+      const nomeConsultor = this.consultorAtual ? this.consultorAtual.nome : 'Pedro';
+      const nomeClient = this.lead.nome || "Cliente";
+      const moto = this.motoSelecionada ? this.motoSelecionada.modelo : '';
+      const parcelas = this.planoSelecionado ? this.planoSelecionado.parcelas : 0;
+      const valor = this.planoSelecionado ? this.formatarMoeda(this.planoSelecionado.valor) : '0,00';
 
-      const url = `https://wa.me/${telefone}?text=${encodeURIComponent(mensagem)}`;
+      const mensagem = `Olá, ${nomeConsultor}! Me chamo *${nomeClient}*. Fiz uma simulação no Zappmotos para a *${moto}* com parcelas de *R$ ${valor}* em *${parcelas}x*. Sou de ${this.lead.cidade}/${this.lead.uf}. Como faço para contratar?`;
+
+      const url = `https://wa.me/55${numDestino}?text=${encodeURIComponent(mensagem)}`;
       window.open(url, '_blank');
     }
   },
-  mounted() {
-    // Carrega a lista de estados e cidades do IBGE
+  async mounted() {
+    // 1. Identifica o vendedor dono do link
+    await this.verificarConsultorRef();
+
+    // 2. Carrega a lista de estados e cidades do IBGE
     this.carregarEstados();
 
-    // Carrega o catálogo de motos
+    // 3. Carrega o catálogo de motos
     fetch('motos.json')
       .then(response => {
         if (!response.ok) throw new Error(`Erro de rede ao carregar JSON: ${response.status}`);

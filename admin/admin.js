@@ -180,10 +180,7 @@ createApp({
       localStorage.removeItem('zappmotos_consultor');
     },
 
-    // 📊 CARREGA OS LEADS DO CONSULTOR (Compatível com CPF ou Slug)
-    // 📊 CARREGA TODOS OS LEADS DO CONSULTOR DE FORMA SIMPLES E SEGURA
-   // 📊 CARREGA TODOS OS LEADS DA COLEÇÃO E FILTRA POR SEGURANÇA
-// 📊 CARREGA TODOS OS LEADS DA COLEÇÃO E EXIBE NO PAINEL
+    // 📊 CARREGA TODOS OS LEADS DA COLEÇÃO E EXIBE NO PAINEL
     async carregarLeads() {
       if (!this.consultorLogado) return;
       this.carregando = true;
@@ -201,7 +198,6 @@ createApp({
         this.leads = todosOsLeads.filter(l => {
           const leadRef = String(l.consultorCpf || '').trim();
           
-          // Se o lead pertencer ao seu CPF, ao seu Slug, ou se for genérico ('PADRAO' / vazio), ele aparece!
           return (
             leadRef === cpfLogado || 
             leadRef === slugLogado || 
@@ -252,7 +248,7 @@ createApp({
       }
     },
 
-    // 🔗 GERA O LINK PÚBLICO SEGURO DO VENDEDOR (Garante o Slug e oculta o CPF)
+    // 🔗 GERA O LINK PÚBLICO SEGURO DO VENDEDOR (Compatível com GitHub Pages e Localhost)
     gerarMeuLinkPublico() {
       if (!this.consultorLogado) return '';
       
@@ -268,8 +264,12 @@ createApp({
         localStorage.setItem('zappmotos_consultor', JSON.stringify(this.consultorLogado));
       }
 
-      const origin = window.location.origin;
-      return `${origin}/index.html?ref=${slug}`;
+      // Ajusta o caminho base dependendo se está rodando localmente ou no GitHub Pages (honda_wb_app)
+      const baseUrl = window.location.hostname.includes('github.io') 
+        ? `${window.location.origin}/honda_wb_app/` 
+        : `${window.location.origin}/`;
+
+      return `${baseUrl}index.html?ref=${slug}`;
     },
 
     copiarLink() {

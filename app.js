@@ -23,7 +23,7 @@ createApp({
       leadId: null,
       consultorRef: '',
       consultorAtual: null,
-      modoPainelVendedor: false, // 🚀 NOVO: Controla se a página exibe a vitrine do SaaS (Criar Conta) ou o Simulador do Lead
+      modoPainelVendedor: true, // 🚀 NOVO: Controla se a página exibe a vitrine do SaaS (Criar Conta) ou o Simulador do Lead
       exibirModalTermos: false,
       estados: [],
       cidades: [],

@@ -37,47 +37,14 @@
           </div>
 
           <div class="d-grid gap-3">
-            <button class="btn btn-danger py-3 fw-bold rounded-3 shadow-sm" @click="telaPainel = 'cadastro'">
+            <!-- Redireciona para o admin apontando para a aba/modo de criação de conta -->
+            <button class="btn btn-danger py-3 fw-bold rounded-3 shadow-sm" @click="window.location.href = './admin/index.html#criar'">
               <i class="bi bi-person-plus-fill me-2"></i> Criar minha conta de consultor
             </button>
-            <button class="btn btn-outline-dark py-3 fw-bold rounded-3" @click="telaPainel = 'login'">
+            <!-- Redireciona para o admin oficial de login -->
+            <button class="btn btn-outline-dark py-3 fw-bold rounded-3" @click="window.location.href = './admin/index.html'">
               <i class="bi bi-box-arrow-in-right me-2"></i> Já tenho conta (Fazer Login)
             </button>
-          </div>
-        </div>
-
-        <!-- SEÇÃO: CRIAR CONTA DE CONSULTOR -->
-        <div v-if="telaPainel === 'cadastro'">
-          <div class="d-flex align-items-center mb-3">
-            <button @click="telaPainel = 'home'" class="btn btn-link text-dark p-0 me-2 border-0">
-              <i class="bi bi-chevron-left fs-5"></i> Voltar
-            </button>
-            <h2 class="fs-5 fw-bold mb-0">Criar Conta de Consultor</h2>
-          </div>
-          
-          <div class="bg-light p-3 rounded-4 border">
-            <p class="small text-muted mb-3">Preencha para gerar seu link exclusivo de atendimento:</p>
-            <!-- Aqui você pode colocar o form de cadastro do consultor em breve -->
-            <input type="text" placeholder="Seu Nome Completo" class="form-control mb-2 bg-white">
-            <input type="text" placeholder="Seu WhatsApp" class="form-control mb-2 bg-white">
-            <input type="text" placeholder="Seu Slug (ex: pedro-motos)" class="form-control mb-3 bg-white">
-            <button class="btn btn-danger w-100 py-2 fw-bold rounded-3" @click="alert('Conta criada com sucesso! (Simulação)')">Cadastrar Consultor</button>
-          </div>
-        </div>
-
-        <!-- SEÇÃO: FAZER LOGIN / ADMIN -->
-        <div v-if="telaPainel === 'login'">
-          <div class="d-flex align-items-center mb-3">
-            <button @click="telaPainel = 'home'" class="btn btn-link text-dark p-0 me-2 border-0">
-              <i class="bi bi-chevron-left fs-5"></i> Voltar
-            </button>
-            <h2 class="fs-5 fw-bold mb-0">Acessar Painel / Admin</h2>
-          </div>
-
-          <div class="bg-light p-3 rounded-4 border">
-            <p class="small text-muted mb-3">Entre com seu CPF ou Slug para gerenciar seus leads:</p>
-            <input type="text" placeholder="Digite seu CPF ou Slug" class="form-control mb-3 bg-white">
-            <button class="btn btn-dark w-100 py-2 fw-bold rounded-3" @click="window.location.href = '/admin'">Acessar Meus Leads</button>
           </div>
         </div>
 

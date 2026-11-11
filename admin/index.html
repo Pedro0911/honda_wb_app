@@ -56,7 +56,7 @@
           </button>
         </form>
 
-        <!-- FORM DE CADASTRO (#1) -->
+        <!-- FORM DE CADASTRO -->
         <form v-if="abaAuth === 'cadastro'" @submit.prevent="cadastrarConsultor">
           <div class="mb-3">
             <label class="form-label small fw-semibold text-secondary">Seu Nome Completo</label>
@@ -118,7 +118,7 @@
         </div>
       </header>
 
-      <!-- ABA 1: TABELA DE LEADS & DASHBOARD (#2) -->
+      <!-- ABA 1: TABELA DE LEADS & DASHBOARD -->
       <main v-if="abaAtual === 'leads'">
         
         <!-- Cards de Métricas -->
@@ -186,6 +186,7 @@
                   <th>Contato</th>
                   <th>Cidade / UF</th>
                   <th>Moto de Interesse</th>
+                  <th>Lance / Chance</th> <!-- 👈 COLUNA ADICIONADA -->
                   <th>Etapa Alcançada</th>
                   <th>LGPD</th>
                   <th class="text-end pe-4">Atender</th>
@@ -193,13 +194,13 @@
               </thead>
               <tbody>
                 <tr v-if="carregando">
-                  <td colspan="8" class="text-center py-5 text-muted">
+                  <td colspan="9" class="text-center py-5 text-muted">
                     <div class="spinner-border text-danger" role="status"></div>
                     <p class="small mt-2">Carregando seus leads exclusivos...</p>
                   </td>
                 </tr>
                 <tr v-else-if="leadsFiltrados.length === 0">
-                  <td colspan="8" class="text-center py-5 text-muted">
+                  <td colspan="9" class="text-center py-5 text-muted">
                     Nenhum lead encontrado para este filtro.
                   </td>
                 </tr>
@@ -214,6 +215,20 @@
                     </span>
                     <span class="text-muted small" v-else>Em navegação</span>
                   </td>
+                  
+                  <!-- 🎯 COLUNA DO LANCE & CHANCE CALCULADA -->
+                  <td>
+                    <div v-if="lead.lanceAproximado && lead.lanceAproximado > 0">
+                      <span class="fw-bold text-success font-monospace">R$ {{ formatarMoeda(lead.lanceAproximado) }}</span>
+                      <small class="d-block text-muted" style="font-size: 11px;">
+                        ~{{ lead.percentualLance }}% do bem
+                      </small>
+                    </div>
+                    <div v-else>
+                      <span class="text-muted small">Não simulado</span>
+                    </div>
+                  </td>
+
                   <td>
                     <span class="badge" :class="corEtapa(lead.etapaAlcancada)">
                       Etapa {{ lead.etapaAlcancada || 1 }}/4
@@ -238,7 +253,7 @@
       </main>
 
 
-      <!-- ABA 2: MEU LINK EXCLUSIVO (#3) -->
+      <!-- ABA 2: MEU LINK EXCLUSIVO -->
       <main v-if="abaAtual === 'link'" class="max-w-lg mx-auto py-3">
         <div class="card border-0 shadow-sm rounded-4 p-4 p-md-5 bg-white text-center">
           <div class="bg-danger-subtle text-danger rounded-circle mx-auto p-3 d-flex align-items-center justify-content-center mb-3" style="width: 64px; height: 64px;">
@@ -260,7 +275,7 @@
       </main>
 
 
-      <!-- ABA 3: PERFIL DO CONSULTOR (#2) -->
+      <!-- ABA 3: PERFIL DO CONSULTOR -->
       <main v-if="abaAtual === 'perfil'" class="max-w-lg mx-auto py-3">
         <div class="card border-0 shadow-sm rounded-4 p-4 p-md-5 bg-white">
           <h4 class="fw-bold text-dark mb-4">Seus Dados de Cadastro</h4>
@@ -297,9 +312,9 @@
         </div>
       </main>
 
-    </div><!-- Fim da div id="app" -->
+    </div>
+  </div>
 
-  <!-- ==================== SCRIPTS (Devem ficar FORA do #app) ==================== -->
   <!-- Vue 3 & Firebase Compat SDKs -->
   <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>

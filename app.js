@@ -23,7 +23,7 @@ createApp({
       leadId: null,
       consultorRef: '',
       consultorAtual: null,
-      modoPainelVendedor: true, // 🚀 NOVO: Controla se a página exibe a vitrine do SaaS (Criar Conta) ou o Simulador do Lead
+      modoPainelVendedor: true, // 🚀 Controla se a página exibe a vitrine do SaaS ou o Simulador do Lead
       telaPainel: 'home',
       exibirModalTermos: false,
       estados: [],
@@ -35,7 +35,7 @@ createApp({
         uf: 'AL',
         cidade: '',
         orcamento: 500,
-        lanceAproximado: 0, // 🚀 NOVO: Armazena o valor do lance simulado pelo lead
+        lanceAproximado: 0,
         aceitouTermos: false
       },
       catalogoMotos: [],
@@ -71,21 +71,39 @@ createApp({
     }
   },
   methods: {
+    // Redireciona para a tela de criação de conta no Admin
+    irParaCadastro() {
+      window.location.href = './admin/index.html#criar';
+    },
+
+    // Redireciona para o painel de login/admin
+    irParaLogin() {
+      window.location.href = './admin/index.html';
+    }, // 👈 VÍRGULA ADICIONADA AQUI COM SUCESSO
+
     // 🔍 Identifica o consultor dono do link via query string (?ref=slug ou ?v=slug)
     async verificarConsultorRef() {
+      // Pega a URL completa para inspecionar parâmetros com segurança
       const urlParams = new URLSearchParams(window.location.search);
       const ref = urlParams.get('ref') || urlParams.get('v');
 
-      if (ref) {
-        this.consultorRef = ref;
-        this.modoPainelVendedor = false; // Abre o simulador para o cliente final
+      // 🔥 CORREÇÃO EXTRA PARA O GITHUB PAGES: Verifica se há parâmetros na hash
+      let slugFinal = ref;
+      if (!slugFinal && window.location.hash.includes('?')) {
+        const hashQuery = new URLSearchParams(window.location.hash.split('?')[1]);
+        slugFinal = hashQuery.get('ref') || hashQuery.get('v');
+      }
+
+      if (slugFinal) {
+        this.consultorRef = slugFinal;
+        this.modoPainelVendedor = false; // Entra na tela do Lead (Simulador)
         try {
-          const snapshot = await db.collection('consultores').where('slug', '==', ref).limit(1).get();
+          const snapshot = await db.collection('consultores').where('slug', '==', slugFinal).limit(1).get();
           
           if (!snapshot.empty) {
             this.consultorAtual = snapshot.docs[0].data();
           } else {
-            const docCpf = await db.collection('consultores').doc(ref.replace(/\D/g, '')).get();
+            const docCpf = await db.collection('consultores').doc(slugFinal.replace(/\D/g, '')).get();
             if (docCpf.exists) {
               this.consultorAtual = docCpf.data();
             }
@@ -94,7 +112,7 @@ createApp({
           console.error("Erro ao buscar consultor dono do link:", e);
         }
       } else {
-        // 🚀 Se acessou a raiz sem parâmetro, direciona para o painel de cadastro do SaaS (Consultor)
+        // 🚀 Se a URL estiver limpa, ativa o Painel do Vendedor
         this.modoPainelVendedor = true;
       }
     },
@@ -195,7 +213,7 @@ createApp({
               parcelas: plano.parcelas,
               valor: plano.valor
             },
-            lanceAproximado: this.lead.lanceAproximado || 0, // 🚀 NOVO: Salva o lance informado pelo lead
+            lanceAproximado: this.lead.lanceAproximado || 0,
             etapaAlcancada: 4,
             atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
           });
@@ -231,38 +249,25 @@ createApp({
       window.open(url, '_blank');
     }
   },
-  async verificarConsultorRef() {
-      // Pega a URL completa para inspecionar parâmetros com segurança
-      const urlParams = new URLSearchParams(window.location.search);
-      const ref = urlParams.get('ref') || urlParams.get('v');
+  async mounted() {
+    await this.verificarConsultorRef();
+    this.carregarEstados();
 
-      // 🔥 CORREÇÃO EXTRA PARA O GITHUB PAGES: Verifica se há parâmetros na hash (caso use vue-router em modo hash)
-      let slugFinal = ref;
-      if (!slugFinal && window.location.hash.includes('?')) {
-        const hashQuery = new URLSearchParams(window.location.hash.split('?')[1]);
-        slugFinal = hashQuery.get('ref') || hashQuery.get('v');
-      }
-
-      if (slugFinal) {
-        this.consultorRef = slugFinal;
-        this.modoPainelVendedor = false; // Entra na tela do Lead (Simulador)
-        try {
-          const snapshot = await db.collection('consultores').where('slug', '==', slugFinal).limit(1).get();
-          
-          if (!snapshot.empty) {
-            this.consultorAtual = snapshot.docs[0].data();
-          } else {
-            const docCpf = await db.collection('consultores').doc(slugFinal.replace(/\D/g, '')).get();
-            if (docCpf.exists) {
-              this.consultorAtual = docCpf.data();
-            }
-          }
-        } catch (e) {
-          console.error("Erro ao buscar consultor dono do link:", e);
-        }
-      } else {
-        // 🚀 Se a URL estiver limpa (ex: https://pedro0911.github.io/honda_wb_app/), ativa o Painel do Vendedor
-        this.modoPainelVendedor = true;
-      }
-    },
+    if (!this.modoPainelVendedor) {
+      fetch('motos.json')
+        .then(response => {
+          if (!response.ok) throw new Error(`Erro de rede ao carregar JSON: ${response.status}`);
+          return response.json();
+        })
+        .then(data => {
+          this.catalogoMotos = data.catalogo_honda;
+          this.carregandoCatalogo = false;
+        })
+        .catch(error => {
+          console.error("Erro ao carregar motos.json:", error);
+          this.carregandoCatalogo = false;
+          this.erroCatalogo = true;
+        });
+    }
+  }
 }).mount('#app');

@@ -37,12 +37,12 @@
           </div>
 
           <div class="d-grid gap-3">
-            <!-- Redireciona para o admin apontando para a aba/modo de criação de conta -->
-            <button class="btn btn-danger py-3 fw-bold rounded-3 shadow-sm" @click="window.location.href = './admin/index.html#criar'">
+            <!-- Redireciona via método irParaCadastro no app.js -->
+            <button class="btn btn-danger py-3 fw-bold rounded-3 shadow-sm" @click="irParaCadastro">
               <i class="bi bi-person-plus-fill me-2"></i> Criar minha conta de consultor
             </button>
-            <!-- Redireciona para o admin oficial de login -->
-            <button class="btn btn-outline-dark py-3 fw-bold rounded-3" @click="window.location.href = './admin/index.html'">
+            <!-- Redireciona via método irParaLogin no app.js -->
+            <button class="btn btn-outline-dark py-3 fw-bold rounded-3" @click="irParaLogin">
               <i class="bi bi-box-arrow-in-right me-2"></i> Já tenho conta (Fazer Login)
             </button>
           </div>

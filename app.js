@@ -23,6 +23,7 @@ createApp({
       leadId: null,
       consultorRef: '',
       consultorAtual: null,
+      modoPainelVendedor: false, // 🚀 NOVO: Controla se a página exibe a vitrine do SaaS (Criar Conta) ou o Simulador do Lead
       exibirModalTermos: false,
       estados: [],
       cidades: [],
@@ -30,9 +31,10 @@ createApp({
       lead: {
         nome: '',
         whatsapp: '',
-        uf: 'AL', // Pré-seleciona Alagoas por padrão
+        uf: 'AL',
         cidade: '',
         orcamento: 500,
+        lanceAproximado: 0, // 🚀 NOVO: Armazena o valor do lance simulado pelo lead
         aceitouTermos: false
       },
       catalogoMotos: [],
@@ -68,20 +70,20 @@ createApp({
     }
   },
   methods: {
-    // 🔍 Identifica o consultor dono do link via query string segura (?ref=slug)
+    // 🔍 Identifica o consultor dono do link via query string (?ref=slug ou ?v=slug)
     async verificarConsultorRef() {
       const urlParams = new URLSearchParams(window.location.search);
-      const ref = urlParams.get('ref');
+      const ref = urlParams.get('ref') || urlParams.get('v');
+
       if (ref) {
-        this.consultorRef = ref; // Guarda o código da URL
+        this.consultorRef = ref;
+        this.modoPainelVendedor = false; // Abre o simulador para o cliente final
         try {
-          // Procura na coleção consultores onde o campo 'slug' é igual ao parâmetro da URL
           const snapshot = await db.collection('consultores').where('slug', '==', ref).limit(1).get();
           
           if (!snapshot.empty) {
             this.consultorAtual = snapshot.docs[0].data();
           } else {
-            // Fallback de compatibilidade caso alguém acesse com CPF antigo
             const docCpf = await db.collection('consultores').doc(ref.replace(/\D/g, '')).get();
             if (docCpf.exists) {
               this.consultorAtual = docCpf.data();
@@ -90,6 +92,9 @@ createApp({
         } catch (e) {
           console.error("Erro ao buscar consultor dono do link:", e);
         }
+      } else {
+        // 🚀 Se acessou a raiz sem parâmetro, direciona para o painel de cadastro do SaaS (Consultor)
+        this.modoPainelVendedor = true;
       }
     },
 
@@ -97,13 +102,11 @@ createApp({
       if (this.etapa > 1) this.etapa--;
     },
 
-    // Limita o WhatsApp apenas a números e a 11 dígitos (Padrão Brasil: DDD + 9 dígitos)
     limitarWhatsapp(event) {
       const apenasNumeros = event.target.value.replace(/\D/g, '');
       this.lead.whatsapp = apenasNumeros.slice(0, 11);
     },
 
-    // Busca todos os estados do Brasil via API do IBGE
     async carregarEstados() {
       try {
         const res = await fetch('https://servicodados.ibge.gov.br/api/v1/localidades/estados?orderBy=nome');
@@ -115,7 +118,6 @@ createApp({
       }
     },
 
-    // Busca as cidades do estado selecionado via API do IBGE
     async carregarCidades() {
       if (!this.lead.uf) return;
       this.carregandoCidades = true;
@@ -131,18 +133,17 @@ createApp({
       }
     },
 
-    // TELA 1: Salva o novo lead no Firestore vinculado de forma padronizada ao consultor
+    // TELA 1: Salva o lead no Firestore
     async avancarEtapa1() {
       if (!this.lead.nome || !this.lead.whatsapp || !this.lead.uf || !this.lead.cidade || !this.lead.aceitouTermos) return;
 
-      // Padronização: Usa o slug oficial do consultor carregado, ou o ref da URL, ou 'PADRAO'
       const consultorIdPadrao = this.consultorAtual 
         ? (this.consultorAtual.slug || this.consultorAtual.cpf) 
         : (this.consultorRef || 'PADRAO');
 
       try {
         const docRef = await db.collection("leads").add({
-          consultorCpf: consultorIdPadrao, // Padronizado com o slug ou identificador correto
+          consultorCpf: consultorIdPadrao,
           nome: this.lead.nome,
           whatsapp: this.lead.whatsapp,
           uf: this.lead.uf,
@@ -156,7 +157,6 @@ createApp({
         });
 
         this.leadId = docRef.id;
-        console.log("Lead registrado com sucesso! ID:", this.leadId);
       } catch (error) {
         console.error("Erro ao salvar lead no Firebase:", error);
       }
@@ -164,7 +164,7 @@ createApp({
       this.etapa = 2;
     },
 
-    // TELA 2: Atualiza o orçamento no documento do lead existente
+    // TELA 2: Atualiza o orçamento
     async avancarEtapa2() {
       if (this.leadId) {
         try {
@@ -180,7 +180,7 @@ createApp({
       this.etapa = 3;
     },
 
-    // TELA 3 -> 4: Registra a moto e o plano em que o cliente clicou
+    // TELA 3 -> 4: Registra a moto, o plano e o lance simulado
     async selecionarMoto(moto, plano) {
       this.motoSelecionada = moto;
       this.planoSelecionado = plano;
@@ -194,6 +194,7 @@ createApp({
               parcelas: plano.parcelas,
               valor: plano.valor
             },
+            lanceAproximado: this.lead.lanceAproximado || 0, // 🚀 NOVO: Salva o lance informado pelo lead
             etapaAlcancada: 4,
             atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
           });
@@ -210,45 +211,45 @@ createApp({
       return valor.toFixed(2).replace('.', ',');
     },
 
-    // 📲 Direciona o WhatsApp para o consultor responsável pelo link
+    // 📲 Direciona o WhatsApp para o consultor incluindo o dossiê de lance
     abrirWhatsApp() {
       const numDestino = this.consultorAtual && this.consultorAtual.whatsapp
         ? this.consultorAtual.whatsapp.replace(/\D/g, '')
-        : '82999679667'; // Fallback padrão caso o lead entre direto
+        : '82999679667';
 
       const nomeConsultor = this.consultorAtual ? this.consultorAtual.nome : 'Pedro';
       const nomeClient = this.lead.nome || "Cliente";
       const moto = this.motoSelecionada ? this.motoSelecionada.modelo : '';
       const parcelas = this.planoSelecionado ? this.planoSelecionado.parcelas : 0;
       const valor = this.planoSelecionado ? this.formatarMoeda(this.planoSelecionado.valor) : '0,00';
+      const lanceTexto = this.lead.lanceAproximado > 0 ? ` e pretendo dar um lance de aprox. *R$ ${this.formatarMoeda(this.lead.lanceAproximado)}*` : '';
 
-      const mensagem = `Olá, ${nomeConsultor}! Me chamo *${nomeClient}*. Fiz uma simulação no Zappmotos para a *${moto}* com parcelas de *R$ ${valor}* em *${parcelas}x*. Sou de ${this.lead.cidade}/${this.lead.uf}. Como faço para contratar?`;
+      const mensagem = `Olá, ${nomeConsultor}! Me chamo *${nomeClient}*. Fiz uma simulação no Zappmotos para a *${moto}* com parcelas de *R$ ${valor}* em *${parcelas}x*${lanceTexto}. Sou de ${this.lead.cidade}/${this.lead.uf}. Como faço para contratar?`;
 
       const url = `https://wa.me/55${numDestino}?text=${encodeURIComponent(mensagem)}`;
       window.open(url, '_blank');
     }
   },
   async mounted() {
-    // 1. Identifica o vendedor dono do link
     await this.verificarConsultorRef();
-
-    // 2. Carrega a lista de estados e cidades do IBGE
     this.carregarEstados();
 
-    // 3. Carrega o catálogo de motos
-    fetch('motos.json')
-      .then(response => {
-        if (!response.ok) throw new Error(`Erro de rede ao carregar JSON: ${response.status}`);
-        return response.json();
-      })
-      .then(data => {
-        this.catalogoMotos = data.catalogo_honda;
-        this.carregandoCatalogo = false;
-      })
-      .catch(error => {
-        console.error("Erro ao carregar motos.json:", error);
-        this.carregandoCatalogo = false;
-        this.erroCatalogo = true;
-      });
+    // Se estiver no modo cliente/simulador, carrega o catálogo de motos
+    if (!this.modoPainelVendedor) {
+      fetch('motos.json')
+        .then(response => {
+          if (!response.ok) throw new Error(`Erro de rede ao carregar JSON: ${response.status}`);
+          return response.json();
+        })
+        .then(data => {
+          this.catalogoMotos = data.catalogo_honda;
+          this.carregandoCatalogo = false;
+        })
+        .catch(error => {
+          console.error("Erro ao carregar motos.json:", error);
+          this.carregandoCatalogo = false;
+          this.erroCatalogo = true;
+        });
+    }
   }
 }).mount('#app');

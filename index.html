@@ -26,23 +26,64 @@
           <p class="small text-muted mb-0">A ferramenta definitiva para consultores Honda</p>
         </div>
 
-        <div class="card border-0 bg-light rounded-4 p-4 text-center mb-4">
-          <h1 class="fs-4 fw-bold text-dark mb-2">Venda mais consórcios sem o desgaste da prospecção fria</h1>
-          <p class="small text-muted mb-3">Capte leads qualificados através de simuladores inteligentes com captação de lances e dossiê comercial completo.</p>
-          <div class="badge bg-danger text-white py-2 px-3 rounded-pill fw-bold">Plano Profissional: R$ 37,90/mês</div>
+        <!-- TELA INICIAL DO PAINEL (HOME) -->
+        <div v-if="telaPainel === 'home'">
+          <div class="card border-0 bg-light rounded-4 p-4 text-center mb-4">
+            <h1 class="fs-4 fw-bold text-dark mb-2">Venda mais consórcios sem o desgaste da prospecção fria</h1>
+            <p class="small text-muted mb-3">Capte leads qualificados através de simuladores inteligentes com captação de lances e dossiê comercial completo.</p>
+            
+            <!-- 🔒 Badge de Assinatura Oculto Conforme Solicitado -->
+            <!-- <div class="badge bg-danger text-white py-2 px-3 rounded-pill fw-bold">Plano Profissional: R$ 37,90/mês</div> -->
+          </div>
+
+          <div class="d-grid gap-3">
+            <button class="btn btn-danger py-3 fw-bold rounded-3 shadow-sm" @click="telaPainel = 'cadastro'">
+              <i class="bi bi-person-plus-fill me-2"></i> Criar minha conta de consultor
+            </button>
+            <button class="btn btn-outline-dark py-3 fw-bold rounded-3" @click="telaPainel = 'login'">
+              <i class="bi bi-box-arrow-in-right me-2"></i> Já tenho conta (Fazer Login)
+            </button>
+          </div>
         </div>
 
-        <div class="d-grid gap-3">
-          <button class="btn btn-danger py-3 fw-bold rounded-3 shadow-sm" @click="alert('Módulo de cadastro de novos consultores em breve!')">
-            <i class="bi bi-person-plus-fill me-2"></i> Criar minha conta de consultor
-          </button>
-          <button class="btn btn-outline-dark py-3 fw-bold rounded-3" @click="alert('Área de login em breve!')">
-            <i class="bi bi-box-arrow-in-right me-2"></i> Já tenho conta (Fazer Login)
-          </button>
+        <!-- SEÇÃO: CRIAR CONTA DE CONSULTOR -->
+        <div v-if="telaPainel === 'cadastro'">
+          <div class="d-flex align-items-center mb-3">
+            <button @click="telaPainel = 'home'" class="btn btn-link text-dark p-0 me-2 border-0">
+              <i class="bi bi-chevron-left fs-5"></i> Voltar
+            </button>
+            <h2 class="fs-5 fw-bold mb-0">Criar Conta de Consultor</h2>
+          </div>
+          
+          <div class="bg-light p-3 rounded-4 border">
+            <p class="small text-muted mb-3">Preencha para gerar seu link exclusivo de atendimento:</p>
+            <!-- Aqui você pode colocar o form de cadastro do consultor em breve -->
+            <input type="text" placeholder="Seu Nome Completo" class="form-control mb-2 bg-white">
+            <input type="text" placeholder="Seu WhatsApp" class="form-control mb-2 bg-white">
+            <input type="text" placeholder="Seu Slug (ex: pedro-motos)" class="form-control mb-3 bg-white">
+            <button class="btn btn-danger w-100 py-2 fw-bold rounded-3" @click="alert('Conta criada com sucesso! (Simulação)')">Cadastrar Consultor</button>
+          </div>
         </div>
+
+        <!-- SEÇÃO: FAZER LOGIN / ADMIN -->
+        <div v-if="telaPainel === 'login'">
+          <div class="d-flex align-items-center mb-3">
+            <button @click="telaPainel = 'home'" class="btn btn-link text-dark p-0 me-2 border-0">
+              <i class="bi bi-chevron-left fs-5"></i> Voltar
+            </button>
+            <h2 class="fs-5 fw-bold mb-0">Acessar Painel / Admin</h2>
+          </div>
+
+          <div class="bg-light p-3 rounded-4 border">
+            <p class="small text-muted mb-3">Entre com seu CPF ou Slug para gerenciar seus leads:</p>
+            <input type="text" placeholder="Digite seu CPF ou Slug" class="form-control mb-3 bg-white">
+            <button class="btn btn-dark w-100 py-2 fw-bold rounded-3" @click="window.location.href = '/admin'">Acessar Meus Leads</button>
+          </div>
+        </div>
+
       </div>
 
-      <div class="text-center text-muted small pb-3">
+      <div class="text-center text-muted small pb-3 pt-4">
         <p class="mb-0" style="font-size: 11px;">&copy; 2026 Zappmotos - Todos os direitos reservados.</p>
       </div>
     </main>

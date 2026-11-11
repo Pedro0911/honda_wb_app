@@ -251,23 +251,37 @@
             <h2 class="fw-bold text-dark fs-4 mb-0">{{ motoSelecionada.modelo }}</h2>
             <p class="small text-muted">Plano selecionado: {{ planoSelecionado.parcelas }}x de R$ {{ formatarMoeda(planoSelecionado.valor) }}</p>
 
-            <!-- 🎯 NOVO BLOCO: SIMULADOR DE LANCE -->
+            <!-- 🎯 BLOCO: SIMULADOR DE LANCE INTELIGENTE (REGRA HONDA) -->
             <div class="bg-light border rounded-4 p-3 my-3">
               <div class="d-flex align-items-center gap-2 mb-2">
                 <i class="bi bi-lightning-charge-fill text-warning fs-5"></i>
                 <h3 class="fw-bold fs-6 text-dark mb-0">Quer acelerar sua conquista?</h3>
               </div>
-              <p class="small text-muted mb-2">Simule um lance aproximado para ver suas chances de contemplação.</p>
+              <p class="small text-muted mb-2">Simule seu lance para ver as chances baseadas no histórico da Honda.</p>
               
               <div class="input-group mb-2">
                 <span class="input-group-text bg-white border-end-0 small text-muted">R$</span>
-                <input type="number" v-model.number="lead.lanceAproximado" placeholder="Ex: 4500" class="form-control bg-white border-start-0">
+                <input type="number" v-model.number="lead.lanceAproximado" @input="salvarLanceFirestore" placeholder="Ex: 4500" class="form-control bg-white border-start-0">
               </div>
 
-              <div class="d-flex gap-1">
-                <button type="button" @click="lead.lanceAproximado = 2000" class="btn btn-outline-secondary btn-sm flex-grow-1" style="font-size: 11px;">R$ 2 mil</button>
-                <button type="button" @click="lead.lanceAproximado = 5000" class="btn btn-outline-secondary btn-sm flex-grow-1" style="font-size: 11px;">R$ 5 mil</button>
-                <button type="button" @click="lead.lanceAproximado = 8000" class="btn btn-outline-secondary btn-sm flex-grow-1" style="font-size: 11px;">R$ 8 mil</button>
+              <div class="d-flex gap-1 mb-3">
+                <button type="button" @click="lead.lanceAproximado = 2000; salvarLanceFirestore()" class="btn btn-outline-secondary btn-sm flex-grow-1" style="font-size: 11px;">R$ 2 mil</button>
+                <button type="button" @click="lead.lanceAproximado = 5000; salvarLanceFirestore()" class="btn btn-outline-secondary btn-sm flex-grow-1" style="font-size: 11px;">R$ 5 mil</button>
+                <button type="button" @click="lead.lanceAproximado = 8000; salvarLanceFirestore()" class="btn btn-outline-secondary btn-sm flex-grow-1" style="font-size: 11px;">R$ 8 mil</button>
+              </div>
+
+              <!-- 📊 PAINEL DE ANÁLISE VISUAL DE CHANCES (DINÂMICO) -->
+              <div v-if="lead.lanceAproximado > 0" class="p-3 rounded-3 shadow-sm transition-all" :class="analiseLance.badgeBg">
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                  <span class="small fw-semibold">Representa do bem:</span>
+                  <span class="fw-bold font-monospace">{{ analiseLance.percentual }}%</span>
+                </div>
+                <div class="small fw-bold text-center mt-1" :class="analiseLance.classe">
+                  {{ analiseLance.texto }}
+                </div>
+                <div class="text-muted text-center mt-1" style="font-size: 10px;">
+                  (Valor estimado do bem: R$ {{ formatarMoeda(analiseLance.valorBem) }})
+                </div>
               </div>
             </div>
 

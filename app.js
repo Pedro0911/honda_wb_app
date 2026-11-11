@@ -68,6 +68,57 @@ createApp({
       });
 
       return resultado.sort((a, b) => b.plano.valor - a.plano.valor);
+    },
+
+    // 📊 REGRA HONDA: Calcula em tempo real o valor do bem e a probabilidade de contemplação do lance
+    analiseLance() {
+      if (!this.planoSelecionado || !this.lead.lanceAproximado || this.lead.lanceAproximado <= 0) {
+        return { 
+          valorBem: this.planoSelecionado ? (this.planoSelecionado.valor * this.planoSelecionado.parcelas) : 0, 
+          percentual: 0, 
+          texto: 'Informe um valor para analisar suas chances', 
+          classe: 'text-muted', 
+          badgeBg: 'bg-light text-dark' 
+        };
+      }
+
+      // Fórmula oficial Honda: Parcela x Quantidade de Meses
+      const valorBem = this.planoSelecionado.valor * this.planoSelecionado.parcelas;
+      
+      // % do lance em relação ao total do bem
+      const percentual = (this.lead.lanceAproximado / valorBem) * 100;
+
+      let resultado = {
+        valorBem: valorBem,
+        percentual: percentual.toFixed(1),
+        texto: '',
+        classe: '',
+        badgeBg: ''
+      };
+
+      if (percentual < 15) {
+        resultado.texto = '⚠️ Quase ou nenhuma chance de contemplação (Abaixo do mínimo de 15%)';
+        resultado.classe = 'text-danger';
+        resultado.badgeBg = 'bg-danger-subtle text-danger border border-danger-subtle';
+      } else if (percentual >= 15 && percentual < 20) {
+        resultado.texto = '🔍 Baixa chance no lance mínimo';
+        resultado.classe = 'text-warning text-dark';
+        resultado.badgeBg = 'bg-warning-subtle text-dark border border-warning-subtle';
+      } else if (percentual >= 20 && percentual <= 40) {
+        resultado.texto = '✅ Boa chance de contemplação';
+        resultado.classe = 'text-success';
+        resultado.badgeBg = 'bg-success-subtle text-success border border-success-subtle';
+      } else if (percentual > 40 && percentual < 50) {
+        resultado.texto = '🔥 Média chance de contemplação';
+        resultado.classe = 'text-primary';
+        resultado.badgeBg = 'bg-primary-subtle text-primary border border-primary-subtle';
+      } else {
+        resultado.texto = '🚀 Alta chance de contemplação!';
+        resultado.classe = 'text-success fw-bold';
+        resultado.badgeBg = 'bg-success text-white';
+      }
+
+      return resultado;
     }
   },
   methods: {
@@ -79,15 +130,13 @@ createApp({
     // Redireciona para o painel de login/admin
     irParaLogin() {
       window.location.href = './admin/index.html';
-    }, // 👈 VÍRGULA ADICIONADA AQUI COM SUCESSO
+    },
 
     // 🔍 Identifica o consultor dono do link via query string (?ref=slug ou ?v=slug)
     async verificarConsultorRef() {
-      // Pega a URL completa para inspecionar parâmetros com segurança
       const urlParams = new URLSearchParams(window.location.search);
       const ref = urlParams.get('ref') || urlParams.get('v');
 
-      // 🔥 CORREÇÃO EXTRA PARA O GITHUB PAGES: Verifica se há parâmetros na hash
       let slugFinal = ref;
       if (!slugFinal && window.location.hash.includes('?')) {
         const hashQuery = new URLSearchParams(window.location.hash.split('?')[1]);
@@ -112,7 +161,6 @@ createApp({
           console.error("Erro ao buscar consultor dono do link:", e);
         }
       } else {
-        // 🚀 Se a URL estiver limpa, ativa o Painel do Vendedor
         this.modoPainelVendedor = true;
       }
     },
@@ -199,12 +247,13 @@ createApp({
       this.etapa = 3;
     },
 
-    // TELA 3 -> 4: Registra a moto, o plano e o lance simulado
+    // TELA 3 -> 4: Registra a moto, o plano e o lance simulado inicial no Firestore
     async selecionarMoto(moto, plano) {
       this.motoSelecionada = moto;
       this.planoSelecionado = plano;
 
       if (this.leadId) {
+        const analise = this.analiseLance;
         try {
           await db.collection("leads").doc(this.leadId).update({
             motoInteresse: moto.modelo,
@@ -213,7 +262,10 @@ createApp({
               parcelas: plano.parcelas,
               valor: plano.valor
             },
+            valorTotalBem: plano.valor * plano.parcelas,
             lanceAproximado: this.lead.lanceAproximado || 0,
+            percentualLance: Number(analise.percentual) || 0,
+            chanceContemplacao: analise.texto,
             etapaAlcancada: 4,
             atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
           });
@@ -225,13 +277,34 @@ createApp({
       this.etapa = 4;
     },
 
+    // 💾 Método para persistir alterações de lance feitas na Tela 4 no Firestore
+    async salvarLanceFirestore() {
+      if (this.leadId && this.planoSelecionado) {
+        const analise = this.analiseLance;
+        try {
+          await db.collection("leads").doc(this.leadId).update({
+            lanceAproximado: this.lead.lanceAproximado || 0,
+            percentualLance: Number(analise.percentual) || 0,
+            chanceContemplacao: analise.texto,
+            valorTotalBem: analise.valorBem,
+            atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
+          });
+        } catch (error) {
+          console.error("Erro ao atualizar lance no Firebase:", error);
+        }
+      }
+    },
+
     formatarMoeda(valor) {
       if (typeof valor !== 'number') return '0,00';
       return valor.toFixed(2).replace('.', ',');
     },
 
-    // 📲 Direciona o WhatsApp para o consultor incluindo o dossiê de lance
-    abrirWhatsApp() {
+    // 📲 Direciona o WhatsApp para o consultor incluindo a análise completa de lance
+    async abrirWhatsApp() {
+      // Garante a gravação final do lance no Firestore antes de ir pro WhatsApp
+      await this.salvarLanceFirestore();
+
       const numDestino = this.consultorAtual && this.consultorAtual.whatsapp
         ? this.consultorAtual.whatsapp.replace(/\D/g, '')
         : '82999679667';
@@ -241,7 +314,11 @@ createApp({
       const moto = this.motoSelecionada ? this.motoSelecionada.modelo : '';
       const parcelas = this.planoSelecionado ? this.planoSelecionado.parcelas : 0;
       const valor = this.planoSelecionado ? this.formatarMoeda(this.planoSelecionado.valor) : '0,00';
-      const lanceTexto = this.lead.lanceAproximado > 0 ? ` e pretendo dar um lance de aprox. *R$ ${this.formatarMoeda(this.lead.lanceAproximado)}*` : '';
+      
+      const analise = this.analiseLance;
+      const lanceTexto = this.lead.lanceAproximado > 0 
+        ? ` e pretendo dar um lance de aprox. *R$ ${this.formatarMoeda(this.lead.lanceAproximado)}* (~${analise.percentual}% do bem - ${analise.texto})` 
+        : '';
 
       const mensagem = `Olá, ${nomeConsultor}! Me chamo *${nomeClient}*. Fiz uma simulação no Zappmotos para a *${moto}* com parcelas de *R$ ${valor}* em *${parcelas}x*${lanceTexto}. Sou de ${this.lead.cidade}/${this.lead.uf}. Como faço para contratar?`;
 

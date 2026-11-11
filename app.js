@@ -230,26 +230,38 @@ createApp({
       window.open(url, '_blank');
     }
   },
-  async mounted() {
-    await this.verificarConsultorRef();
-    this.carregarEstados();
+  async verificarConsultorRef() {
+      // Pega a URL completa para inspecionar parâmetros com segurança
+      const urlParams = new URLSearchParams(window.location.search);
+      const ref = urlParams.get('ref') || urlParams.get('v');
 
-    // Se estiver no modo cliente/simulador, carrega o catálogo de motos
-    if (!this.modoPainelVendedor) {
-      fetch('motos.json')
-        .then(response => {
-          if (!response.ok) throw new Error(`Erro de rede ao carregar JSON: ${response.status}`);
-          return response.json();
-        })
-        .then(data => {
-          this.catalogoMotos = data.catalogo_honda;
-          this.carregandoCatalogo = false;
-        })
-        .catch(error => {
-          console.error("Erro ao carregar motos.json:", error);
-          this.carregandoCatalogo = false;
-          this.erroCatalogo = true;
-        });
-    }
-  }
+      // 🔥 CORREÇÃO EXTRA PARA O GITHUB PAGES: Verifica se há parâmetros na hash (caso use vue-router em modo hash)
+      let slugFinal = ref;
+      if (!slugFinal && window.location.hash.includes('?')) {
+        const hashQuery = new URLSearchParams(window.location.hash.split('?')[1]);
+        slugFinal = hashQuery.get('ref') || hashQuery.get('v');
+      }
+
+      if (slugFinal) {
+        this.consultorRef = slugFinal;
+        this.modoPainelVendedor = false; // Entra na tela do Lead (Simulador)
+        try {
+          const snapshot = await db.collection('consultores').where('slug', '==', slugFinal).limit(1).get();
+          
+          if (!snapshot.empty) {
+            this.consultorAtual = snapshot.docs[0].data();
+          } else {
+            const docCpf = await db.collection('consultores').doc(slugFinal.replace(/\D/g, '')).get();
+            if (docCpf.exists) {
+              this.consultorAtual = docCpf.data();
+            }
+          }
+        } catch (e) {
+          console.error("Erro ao buscar consultor dono do link:", e);
+        }
+      } else {
+        // 🚀 Se a URL estiver limpa (ex: https://pedro0911.github.io/honda_wb_app/), ativa o Painel do Vendedor
+        this.modoPainelVendedor = true;
+      }
+    },
 }).mount('#app');

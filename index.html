@@ -15,7 +15,42 @@
 <body class="bg-light">
 
   <div id="app" class="app-wrapper">
-    <main class="app-container bg-white shadow-lg flex-column justify-content-between">
+
+    <!-- ========================================== -->
+    <!-- 🚀 PAINEL DO VENDEDOR / LANDING PAGE DO SAAS -->
+    <!-- ========================================== -->
+    <main v-if="modoPainelVendedor" class="app-container bg-white shadow-lg flex-column justify-content-between p-4">
+      <div>
+        <div class="mb-4 text-center pt-3">
+          <span class="fw-bold text-danger fs-2">ZAPP</span><span class="fs-2 fw-semibold">MOTOS</span>
+          <p class="small text-muted mb-0">A ferramenta definitiva para consultores Honda</p>
+        </div>
+
+        <div class="card border-0 bg-light rounded-4 p-4 text-center mb-4">
+          <h1 class="fs-4 fw-bold text-dark mb-2">Venda mais consórcios sem o desgaste da prospecção fria</h1>
+          <p class="small text-muted mb-3">Capte leads qualificados através de simuladores inteligentes com captação de lances e dossiê comercial completo.</p>
+          <div class="badge bg-danger text-white py-2 px-3 rounded-pill fw-bold">Plano Profissional: R$ 37,90/mês</div>
+        </div>
+
+        <div class="d-grid gap-3">
+          <button class="btn btn-danger py-3 fw-bold rounded-3 shadow-sm" @click="alert('Módulo de cadastro de novos consultores em breve!')">
+            <i class="bi bi-person-plus-fill me-2"></i> Criar minha conta de consultor
+          </button>
+          <button class="btn btn-outline-dark py-3 fw-bold rounded-3" @click="alert('Área de login em breve!')">
+            <i class="bi bi-box-arrow-in-right me-2"></i> Já tenho conta (Fazer Login)
+          </button>
+        </div>
+      </div>
+
+      <div class="text-center text-muted small pb-3">
+        <p class="mb-0" style="font-size: 11px;">&copy; 2026 Zappmotos - Todos os direitos reservados.</p>
+      </div>
+    </main>
+
+    <!-- ========================================== -->
+    <!-- 🏍️ FLUXO DO SIMULADOR DO LEAD (CLIENTE)     -->
+    <!-- ========================================== -->
+    <main v-else class="app-container bg-white shadow-lg flex-column justify-content-between">
 
       <!-- Header Fixo (Telas 2, 3 e 4) -->
       <header v-if="etapa > 1" class="app-header p-3 border-bottom bg-white">
@@ -27,7 +62,7 @@
             <span class="fw-bold text-danger fs-5 tracking-wide">ZAPP</span>MOTOS
             <small class="d-block text-muted lh-1 text-uppercase" style="font-size: 10px;">Consórcio Honda</small>
           </div>
-          <div style="width: 24px;"></div> <!-- Espaçador para centralizar o logo -->
+          <div style="width: 24px;"></div>
         </div>
 
         <!-- Barra de Progresso com Indicadores -->
@@ -41,94 +76,94 @@
         </div>
       </header>
 
-      <!-- Conteúdo das Telas -->
+      <!-- Conteúdo das Telas do Lead -->
       <div class="app-content flex-grow-1 d-flex flex-column">
 
-          <!-- TELA 1: CADASTRO -->
-      <section v-if="etapa === 1" class="tela-1 p-4 d-flex flex-column justify-content-between flex-grow-1 text-white">
-        <div class="mt-3">
-          <div class="mb-4">
-            <span class="fw-bold text-danger fs-3">ZAPP</span>MOTOS
-            <p class="small text-light opacity-75 mb-0">Consórcio Honda</p>
-          </div>
-          <h1 class="fs-2 fw-bold mb-2">Seu sonho sobre duas rodas, do seu jeito.</h1>
-          <p class="small text-light opacity-75">Preencha seus dados e descubra as melhores opções de consórcio Honda para você.</p>
-        </div>
-
-        <form @submit.prevent="avancarEtapa1" class="bg-white text-dark p-4 rounded-4 shadow-sm my-4">
-          <div class="mb-3">
-            <label class="form-label small fw-semibold text-secondary">Nome completo</label>
-            <div class="input-group">
-              <span class="input-group-text bg-light border-end-0"><i class="bi bi-person text-muted"></i></span>
-              <input type="text" v-model="lead.nome" required placeholder="Ex: João da Silva" class="form-control bg-light border-start-0">
+        <!-- TELA 1: CADASTRO -->
+        <section v-if="etapa === 1" class="tela-1 p-4 d-flex flex-column justify-content-between flex-grow-1 text-white">
+          <div class="mt-3">
+            <div class="mb-4">
+              <span class="fw-bold text-danger fs-3">ZAPP</span>MOTOS
+              <p class="small text-light opacity-75 mb-0">Consórcio Honda</p>
             </div>
+            <h1 class="fs-2 fw-bold mb-2">Seu sonho sobre duas rodas, do seu jeito.</h1>
+            <p class="small text-light opacity-75">Preencha seus dados e descubra as melhores opções de consórcio Honda para você.</p>
           </div>
 
-          <div class="mb-3">
-            <label class="form-label small fw-semibold text-secondary">WhatsApp (com DDD)</label>
-            <div class="input-group">
-              <span class="input-group-text bg-light border-end-0"><i class="bi bi-whatsapp text-muted"></i></span>
-              <input type="tel" v-model="lead.whatsapp" @input="limitarWhatsapp" required placeholder="Ex: 82991234567" maxlength="11" class="form-control bg-light border-start-0">
+          <form @submit.prevent="avancarEtapa1" class="bg-white text-dark p-4 rounded-4 shadow-sm my-4">
+            <div class="mb-3">
+              <label class="form-label small fw-semibold text-secondary">Nome completo</label>
+              <div class="input-group">
+                <span class="input-group-text bg-light border-end-0"><i class="bi bi-person text-muted"></i></span>
+                <input type="text" v-model="lead.nome" required placeholder="Ex: João da Silva" class="form-control bg-light border-start-0">
+              </div>
             </div>
-            <small class="text-muted" style="font-size: 10px;">Apenas números (DDD + 9 dígitos)</small>
-          </div>
 
-          <!-- ESTADO (UF) -->
-          <div class="mb-3">
-            <label class="form-label small fw-semibold text-secondary">Estado (UF)</label>
-            <div class="input-group">
-              <span class="input-group-text bg-light border-end-0"><i class="bi bi-map text-muted"></i></span>
-              <select v-model="lead.uf" @change="carregarCidades" required class="form-select bg-light border-start-0">
-                <option value="" disabled>Selecione seu estado...</option>
-                <option v-for="uf in estados" :key="uf.sigla" :value="uf.sigla">
-                  {{ uf.nome }} ({{ uf.sigla }})
-                </option>
-              </select>
+            <div class="mb-3">
+              <label class="form-label small fw-semibold text-secondary">WhatsApp (com DDD)</label>
+              <div class="input-group">
+                <span class="input-group-text bg-light border-end-0"><i class="bi bi-whatsapp text-muted"></i></span>
+                <input type="tel" v-model="lead.whatsapp" @input="limitarWhatsapp" required placeholder="Ex: 82991234567" maxlength="11" class="form-control bg-light border-start-0">
+              </div>
+              <small class="text-muted" style="font-size: 10px;">Apenas números (DDD + 9 dígitos)</small>
             </div>
-          </div>
 
-          <!-- CIDADE -->
-          <div class="mb-3">
-            <label class="form-label small fw-semibold text-secondary">Cidade</label>
-            <div class="input-group">
-              <span class="input-group-text bg-light border-end-0"><i class="bi bi-geo-alt text-muted"></i></span>
-              <select v-model="lead.cidade" :disabled="!lead.uf || carregandoCidades" required class="form-select bg-light border-start-0">
-                <option value="" disabled>
-                  {{ carregandoCidades ? 'Carregando cidades...' : (lead.uf ? 'Selecione sua cidade...' : 'Selecione o estado primeiro') }}
-                </option>
-                <option v-for="cidade in cidades" :key="cidade.id" :value="cidade.nome">
-                  {{ cidade.nome }}
-                </option>
-              </select>
+            <!-- ESTADO (UF) -->
+            <div class="mb-3">
+              <label class="form-label small fw-semibold text-secondary">Estado (UF)</label>
+              <div class="input-group">
+                <span class="input-group-text bg-light border-end-0"><i class="bi bi-map text-muted"></i></span>
+                <select v-model="lead.uf" @change="carregarCidades" required class="form-select bg-light border-start-0">
+                  <option value="" disabled>Selecione seu estado...</option>
+                  <option v-for="uf in estados" :key="uf.sigla" :value="uf.sigla">
+                    {{ uf.nome }} ({{ uf.sigla }})
+                  </option>
+                </select>
+              </div>
             </div>
-          </div>
 
-          <!-- CHECKBOX DE CONSENTIMENTO LGPD -->
-          <div class="mb-4 bg-light p-3 rounded-3 border text-start">
-            <div class="form-check">
-              <input class="form-check-input" type="checkbox" id="aceiteLgpd" v-model="lead.aceitouTermos" required>
-              <label class="form-check-label text-secondary" for="aceiteLgpd" style="font-size: 12px; line-height: 1.4;">
-                Concordo em fornecer meus dados para receber simulações personalizadas de consórcio e atendimento via WhatsApp, conforme os 
-                <a href="#" @click.prevent="exibirModalTermos = true" class="text-danger fw-bold text-decoration-none">Termos de Uso e Privacidade</a>.
-              </label>
+            <!-- CIDADE -->
+            <div class="mb-3">
+              <label class="form-label small fw-semibold text-secondary">Cidade</label>
+              <div class="input-group">
+                <span class="input-group-text bg-light border-end-0"><i class="bi bi-geo-alt text-muted"></i></span>
+                <select v-model="lead.cidade" :disabled="!lead.uf || carregandoCidades" required class="form-select bg-light border-start-0">
+                  <option value="" disabled>
+                    {{ carregandoCidades ? 'Carregando cidades...' : (lead.uf ? 'Selecione sua cidade...' : 'Selecione o estado primeiro') }}
+                  </option>
+                  <option v-for="cidade in cidades" :key="cidade.id" :value="cidade.nome">
+                    {{ cidade.nome }}
+                  </option>
+                </select>
+              </div>
             </div>
-          </div>
 
-          <button type="submit" class="btn btn-danger w-100 py-3 fw-bold rounded-3 shadow-sm" :disabled="!lead.aceitouTermos || !lead.cidade">
-            Continuar <i class="bi bi-arrow-right ms-1"></i>
-          </button>
-        </form>
+            <!-- CHECKBOX DE CONSENTIMENTO LGPD -->
+            <div class="mb-4 bg-light p-3 rounded-3 border text-start">
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="aceiteLgpd" v-model="lead.aceitouTermos" required>
+                <label class="form-check-label text-secondary" for="aceiteLgpd" style="font-size: 12px; line-height: 1.4;">
+                  Concordo em fornecer meus dados para receber simulações personalizadas e atendimento via WhatsApp, conforme os 
+                  <a href="#" @click.prevent="exibirModalTermos = true" class="text-danger fw-bold text-decoration-none">Termos de Uso e Privacidade</a>.
+                </label>
+              </div>
+            </div>
 
-        <p class="text-center text-light opacity-50 mb-2" style="font-size: 11px;">
-          <i class="bi bi-shield-lock-fill me-1"></i> Seus dados estão protegidos de acordo com a LGPD e serão usados apenas para contato comercial.
-        </p>
-      </section>
+            <button type="submit" class="btn btn-danger w-100 py-3 fw-bold rounded-3 shadow-sm" :disabled="!lead.aceitouTermos || !lead.cidade">
+              Continuar <i class="bi bi-arrow-right ms-1"></i>
+            </button>
+          </form>
+
+          <p class="text-center text-light opacity-50 mb-2" style="font-size: 11px;">
+            <i class="bi bi-shield-lock-fill me-1"></i> Seus dados estão protegidos de acordo com a LGPD.
+          </p>
+        </section>
 
         <!-- TELA 2: ORÇAMENTO MENSUAL -->
         <section v-if="etapa === 2" class="p-4 d-flex flex-column justify-content-between flex-grow-1">
           <div>
             <h2 class="fw-bold text-dark fs-4">Quanto você pode pagar por mês?</h2>
-            <p class="small text-muted">Escolha o valor que cabe no seu bolso. Você é quem sabe o melhor para você!</p>
+            <p class="small text-muted">Escolha o valor que cabe no seu bolso.</p>
 
             <div class="bg-light border rounded-4 p-4 text-center my-4">
               <div class="mb-3">
@@ -146,7 +181,7 @@
 
             <div class="alert alert-info border-0 rounded-3 d-flex align-items-center gap-3 py-2 px-3">
               <i class="bi bi-info-circle-fill text-primary fs-5"></i>
-              <p class="mb-0 text-dark" style="font-size: 12px;">Esse valor será usado para mostrar as motos e planos que se encaixam no seu orçamento.</p>
+              <p class="mb-0 text-dark" style="font-size: 12px;">Esse valor será usado para mostrar as motos compatíveis com seu orçamento.</p>
             </div>
           </div>
 
@@ -155,31 +190,27 @@
           </button>
         </section>
 
-       <!-- TELA 3: MOTOS E PLANOS FILTRADOS -->
+        <!-- TELA 3: MOTOS E PLANOS FILTRADOS -->
         <section v-if="etapa === 3" class="p-4 d-flex flex-column justify-content-between flex-grow-1 overflow-auto">
           <div>
-            <h2 class="fw-bold text-dark fs-4">Motos que cabem no seu orçamento</h2>
-            <p class="small text-muted">Selecionamos opções compatíveis com o valor de <strong class="text-dark">R$ {{ lead.orcamento }}</strong> por mês.</p>
+            <h2 class="fw-bold text-dark fs-4">Motos no seu orçamento</h2>
+            <p class="small text-muted">Opções compatíveis com o valor de <strong class="text-dark">R$ {{ lead.orcamento }}</strong>/mês.</p>
 
-            <!-- Estado de Carregando o JSON -->
             <div v-if="carregandoCatalogo" class="text-center py-5">
               <div class="spinner-border text-danger" role="status"></div>
               <p class="small text-muted mt-2">Carregando opções...</p>
             </div>
 
-            <!-- Estado de Erro na Leitura do JSON -->
             <div v-else-if="erroCatalogo" class="alert alert-danger rounded-3 small text-center my-3">
-              Não foi possível carregar os dados das motos. Verifique se o arquivo <strong>motos.json</strong> está na raiz do projeto.
+              Não foi possível carregar os dados das motos. Verifique o arquivo <strong>motos.json</strong>.
             </div>
 
-            <!-- Lista de Cards Filtrados pelo Vue -->
             <div v-else class="d-flex flex-column gap-3 mt-3">
               <div v-for="item in motosFiltradas" :key="item.moto.id" 
                    @click="selecionarMoto(item.moto, item.plano)" 
                    class="card border rounded-4 p-3 shadow-sm cursor-pointer hover-card">
                 <div class="d-flex align-items-center justify-content-between">
                   <div class="d-flex align-items-center gap-3">
-                    <!-- Imagem da Moto na Listagem -->
                     <div class="bg-light rounded-3 d-flex align-items-center justify-content-center p-1 overflow-hidden" style="width: 70px; height: 70px; flex-shrink: 0;">
                       <img :src="item.moto.imagem" :alt="item.moto.modelo" class="w-100 h-100 object-fit-contain">
                     </div>
@@ -194,81 +225,57 @@
                 </div>
               </div>
 
-              <!-- Mensagem caso o filtro resulte em zero motos -->
               <div v-if="motosFiltradas.length === 0" class="text-center py-5 text-muted">
                 <p class="fw-bold mb-1">Nenhuma moto encontrada para este valor.</p>
-                <p class="small">Tente aumentar um pouco o valor no passo anterior.</p>
+                <p class="small">Tente aumentar um pouco o orçamento no passo anterior.</p>
               </div>
             </div>
           </div>
         </section>
 
-        <!-- TELA 4: DETALHES E FECHAMENTO (ATUALIZADA COM OS DADOS REAIS DO JSON) -->
+        <!-- TELA 4: DETALHES, SIMULADOR DE LANCE E FECHAMENTO -->
         <section v-if="etapa === 4" class="p-4 d-flex flex-column justify-content-between flex-grow-1 overflow-auto">
           <div v-if="motoSelecionada">
-            <!-- Container Imagem Grande (Expandida para preencher melhor a área) -->
-            <div class="bg-light rounded-4 p-2 text-center mb-3 d-flex align-items-center justify-content-center position-relative overflow-hidden" style="height: 230px;">
-              <img :src="motoSelecionada.imagem" 
-                  :alt="motoSelecionada.modelo" 
-                  class="w-100 h-100 object-fit-contain img-moto-destaque">
+            <div class="bg-light rounded-4 p-2 text-center mb-3 d-flex align-items-center justify-content-center position-relative overflow-hidden" style="height: 200px;">
+              <img :src="motoSelecionada.imagem" :alt="motoSelecionada.modelo" class="w-100 h-100 object-fit-contain">
             </div>
 
             <h2 class="fw-bold text-dark fs-4 mb-0">{{ motoSelecionada.modelo }}</h2>
-            <p class="small text-muted">A moto ideal para o seu dia a dia.</p>
+            <p class="small text-muted">Plano selecionado: {{ planoSelecionado.parcelas }}x de R$ {{ formatarMoeda(planoSelecionado.valor) }}</p>
 
-            <!-- Ficha Técnica Dinâmica (Puxando do motos.json) -->
-            <div class="row g-2 text-center py-2 border-top border-bottom my-3" v-if="motoSelecionada.especificacoes">
-              <div class="col-4">
-                <div class="bg-light p-2 rounded-3">
-                  <span class="d-block text-muted" style="font-size: 10px;">Motor</span>
-                  <span class="fw-semibold small">{{ motoSelecionada.especificacoes.motor }}</span>
-                </div>
+            <!-- 🎯 NOVO BLOCO: SIMULADOR DE LANCE -->
+            <div class="bg-light border rounded-4 p-3 my-3">
+              <div class="d-flex align-items-center gap-2 mb-2">
+                <i class="bi bi-lightning-charge-fill text-warning fs-5"></i>
+                <h3 class="fw-bold fs-6 text-dark mb-0">Quer acelerar sua conquista?</h3>
               </div>
-              <div class="col-4">
-                <div class="bg-light p-2 rounded-3">
-                  <span class="d-block text-muted" style="font-size: 10px;">Combustível</span>
-                  <span class="fw-semibold small" style="font-size: 11px !important;">{{ motoSelecionada.especificacoes.combustivel }}</span>
-                </div>
+              <p class="small text-muted mb-2">Simule um lance aproximado para ver suas chances de contemplação.</p>
+              
+              <div class="input-group mb-2">
+                <span class="input-group-text bg-white border-end-0 small text-muted">R$</span>
+                <input type="number" v-model.number="lead.lanceAproximado" placeholder="Ex: 4500" class="form-control bg-white border-start-0">
               </div>
-              <div class="col-4">
-                <div class="bg-light p-2 rounded-3">
-                  <span class="d-block text-muted" style="font-size: 10px;">Câmbio</span>
-                  <span class="fw-semibold small" style="font-size: 11px !important;">{{ motoSelecionada.especificacoes.transmissao }}</span>
-                </div>
-              </div>
-            </div>
 
-            <!-- Card do Plano -->
-            <div class="bg-light border rounded-4 p-3 mb-3">
-              <div class="d-flex justify-content-between align-items-center mb-1">
-                <span class="small fw-semibold text-muted">Plano selecionado</span>
-                <span class="badge bg-danger-subtle text-danger rounded-pill">Mais popular</span>
-              </div>
-              <div class="fs-3 fw-bold text-dark">{{ planoSelecionado.parcelas }} meses</div>
-              <hr class="my-2">
-              <div class="d-flex justify-content-between align-items-end">
-                <div>
-                  <span class="d-block text-muted" style="font-size: 10px;">Parcelas a partir de</span>
-                  <span class="fs-4 fw-extrabold text-danger">R$ {{ formatarMoeda(planoSelecionado.valor) }}</span>
-                </div>
+              <div class="d-flex gap-1">
+                <button type="button" @click="lead.lanceAproximado = 2000" class="btn btn-outline-secondary btn-sm flex-grow-1" style="font-size: 11px;">R$ 2 mil</button>
+                <button type="button" @click="lead.lanceAproximado = 5000" class="btn btn-outline-secondary btn-sm flex-grow-1" style="font-size: 11px;">R$ 5 mil</button>
+                <button type="button" @click="lead.lanceAproximado = 8000" class="btn btn-outline-secondary btn-sm flex-grow-1" style="font-size: 11px;">R$ 8 mil</button>
               </div>
             </div>
 
             <!-- Benefícios -->
-            <div class="small text-secondary">
-              <p class="fw-bold text-dark mb-1">Sobre o plano:</p>
+            <div class="small text-secondary mb-3">
               <p class="mb-1"><i class="bi bi-check-circle-fill text-success me-1"></i> Contemplação por sorteio ou lance</p>
-              <p class="mb-1"><i class="bi bi-check-circle-fill text-success me-1"></i> Taxa de administração inclusa</p>
-              <p class="mb-0"><i class="bi bi-check-circle-fill text-success me-1"></i> Seguro de vida (opcional)</p>
+              <p class="mb-0"><i class="bi bi-check-circle-fill text-success me-1"></i> Taxa de administração inclusa</p>
             </div>
           </div>
 
-          <div class="mt-4">
+          <div class="mt-2">
             <button @click="abrirWhatsApp" class="btn btn-success w-100 py-3 fw-bold rounded-3 shadow-sm d-flex align-items-center justify-content-center gap-2">
               <i class="bi bi-whatsapp fs-5"></i> Falar com vendedor no WhatsApp
             </button>
             <p class="text-center text-muted mt-2 mb-0" style="font-size: 10px;">
-              Ao clicar, você será direcionado para o nosso WhatsApp com uma mensagem já pronta.
+              Sua simulação e lance serão enviados automaticamente ao consultor.
             </p>
           </div>
         </section>
@@ -286,21 +293,11 @@
           </div>
           <div class="modal-body text-start small text-secondary" style="line-height: 1.6;">
             <h6><strong>1. Coleta de Dados Pessoais</strong></h6>
-            <p>Ao utilizar este simulador, solicitamos seu Nome, número de WhatsApp, Estado e Cidade para personalizar a apresentação das opções de consórcios da Honda.</p>
-
+            <p>Ao utilizar este simulador, solicitamos seu Nome, WhatsApp, Estado e Cidade para personalizar a apresentação das opções de consórcios.</p>
             <h6><strong>2. Finalidade do Tratamento</strong></h6>
-            <p>Os dados coletados são utilizados exclusivamente para:</p>
-            <ul>
-              <li>Apresentar propostas e simulações de parcelas do consórcio;</li>
-              <li>Realizar o atendimento comercial direto via WhatsApp pelo consultor responsável;</li>
-              <li>Indicar o plano ideal de acordo com o orçamento informado.</li>
-            </ul>
-
-            <h6><strong>3. Armazenamento e Segurança</strong></h6>
-            <p>Seus dados são armazenados de forma segura em infraestrutura em nuvem criptografada (Google Firebase) e não serão comercializados ou compartilhados com terceiros não autorizados.</p>
-
-            <h6><strong>4. Seus Direitos (LGPD)</strong></h6>
-            <p>Você tem o direito de solicitar a atualização, confirmação de tratamento ou a exclusão definitiva dos seus dados a qualquer momento, bastando enviar uma mensagem com o texto <em>"Excluir meus dados"</em> para o nosso atendimento no WhatsApp.</p>
+            <p>Os dados coletados são utilizados exclusivamente para apresentar propostas de consórcio e realizar o atendimento comercial direto via WhatsApp.</p>
+            <h6><strong>3. Segurança</strong></h6>
+            <p>Seus dados são armazenados de forma segura no Google Firebase e não serão comercializados.</p>
           </div>
           <div class="modal-footer border-top-0">
             <button type="button" class="btn btn-danger w-100 fw-bold rounded-pill py-2" @click="exibirModalTermos = false">Entendi e Concordo</button>

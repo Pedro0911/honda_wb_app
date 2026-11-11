@@ -94,6 +94,10 @@ createApp({
     limparCpf(cpf) {
       return (cpf || '').replace(/\D/g, '');
     },
+    formatarMoeda(valor) {
+      if (typeof valor !== 'number') return '0,00';
+      return valor.toFixed(2).replace('.', ',');
+    },
 
    // 🔑 CADASTRO DE CONSULTOR (Com Slug Seguro para ocultar o CPF na URL)
     async cadastrarConsultor() {

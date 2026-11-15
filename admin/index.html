@@ -16,6 +16,27 @@
     .card-stat:hover { transform: translateY(-3px); }
     .nav-pills .nav-link.active { background-color: #dc3545; }
     .nav-pills .nav-link { color: #495057; font-weight: 600; }
+    .mostrar-senha-box {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 6px;
+      margin-bottom: 20px;
+      user-select: none;
+    }
+    .mostrar-senha-box input[type="checkbox"] {
+      width: 16px;
+      height: 16px;
+      accent-color: #dc3545;
+      cursor: pointer;
+      margin: 0;
+    }
+    .mostrar-senha-box label {
+      font-size: 13px;
+      color: #555;
+      cursor: pointer;
+      margin: 0;
+    }
   </style>
 </head>
 <body>
@@ -47,10 +68,16 @@
             <label class="form-label small fw-semibold text-secondary">CPF</label>
             <input type="text" v-model="formLogin.cpf" @input="mascararCpf('formLogin')" placeholder="000.000.000-00" required maxlength="14" class="form-control form-control-lg bg-light">
           </div>
-          <div class="mb-4">
+          <div class="mb-2">
             <label class="form-label small fw-semibold text-secondary">Senha</label>
-            <input type="password" v-model="formLogin.senha" placeholder="Sua senha de acesso" required class="form-control form-control-lg bg-light">
+            <input :type="mostrarSenhaLogin ? 'text' : 'password'" v-model="formLogin.senha" placeholder="Sua senha de acesso" required class="form-control form-control-lg bg-light">
           </div>
+          <!-- Checkbox Visualizar Senha (Login) -->
+          <div class="mostrar-senha-box">
+            <input type="checkbox" id="toggle-senha-login" v-model="mostrarSenhaLogin">
+            <label for="toggle-senha-login">Visualizar senha</label>
+          </div>
+
           <button type="submit" class="btn btn-danger btn-lg w-100 fw-bold rounded-3 shadow-sm" :disabled="carregandoAuth">
             {{ carregandoAuth ? 'Entrando...' : 'Acessar Painel' }}
           </button>
@@ -74,10 +101,16 @@
             <label class="form-label small fw-semibold text-secondary">WhatsApp (Atendimento aos Leads)</label>
             <input type="tel" v-model="formCadastro.whatsapp" @input="limitarWhatsapp" placeholder="Ex: 82999679667" required maxlength="11" class="form-control bg-light">
           </div>
-          <div class="mb-4">
+          <div class="mb-2">
             <label class="form-label small fw-semibold text-secondary">Crie uma Senha</label>
-            <input type="password" v-model="formCadastro.senha" placeholder="Mínimo 6 caracteres" required minlength="6" class="form-control bg-light">
+            <input :type="mostrarSenhaCadastro ? 'text' : 'password'" v-model="formCadastro.senha" placeholder="Mínimo 6 caracteres" required minlength="6" class="form-control bg-light">
           </div>
+          <!-- Checkbox Visualizar Senha (Cadastro) -->
+          <div class="mostrar-senha-box">
+            <input type="checkbox" id="toggle-senha-cadastro" v-model="mostrarSenhaCadastro">
+            <label for="toggle-senha-cadastro">Visualizar senha</label>
+          </div>
+
           <button type="submit" class="btn btn-danger w-100 py-3 fw-bold rounded-3 shadow-sm" :disabled="carregandoAuth">
             {{ carregandoAuth ? 'Cadastrando...' : 'Criar Minha Conta Zappmotos' }}
           </button>
@@ -186,7 +219,7 @@
                   <th>Contato</th>
                   <th>Cidade / UF</th>
                   <th>Moto de Interesse</th>
-                  <th>Lance / Chance</th> <!-- 👈 COLUNA ADICIONADA -->
+                  <th>Lance / Chance</th>
                   <th>Etapa Alcançada</th>
                   <th>LGPD</th>
                   <th class="text-end pe-4">Atender</th>
@@ -216,7 +249,6 @@
                     <span class="text-muted small" v-else>Em navegação</span>
                   </td>
                   
-                  <!-- 🎯 COLUNA DO LANCE & CHANCE CALCULADA -->
                   <td>
                     <div v-if="lead.lanceAproximado && lead.lanceAproximado > 0">
                       <span class="fw-bold text-success font-monospace">R$ {{ formatarMoeda(lead.lanceAproximado) }}</span>

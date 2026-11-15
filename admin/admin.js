@@ -26,6 +26,10 @@ createApp({
       salvandoPerfil: false,
       copiado: false,
 
+      //Estados para Visualizar Senha
+      mostrarSenhaLogin: false,
+      mostrarSenhaCadastro: false,
+
       // Form Login
       formLogin: { cpf: '', senha: '' },
 

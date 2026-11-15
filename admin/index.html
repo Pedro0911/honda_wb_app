@@ -93,10 +93,14 @@
             <label class="form-label small fw-semibold text-secondary">CPF (Será seu login)</label>
             <input type="text" v-model="formCadastro.cpf" @input="mascararCpf('formCadastro')" placeholder="000.000.000-00" required maxlength="14" class="form-control bg-light">
           </div>
+
+          <!-- 🔑 NOVO CAMPO: Código de Acesso da Concessionária -->
           <div class="mb-3">
-            <label class="form-label small fw-semibold text-secondary">Nome da Concessionária Honda</label>
-            <input type="text" v-model="formCadastro.empresaHonda" placeholder="Ex: Honda Alagoas / Grupo X" required class="form-control bg-light">
+            <label class="form-label small fw-semibold text-secondary">Código de Acesso da Concessionária</label>
+            <input type="text" v-model="formCadastro.codigoAcesso" placeholder="Ex: HONDA-4829" required class="form-control bg-light text-uppercase font-monospace">
+            <small class="text-muted" style="font-size: 11px;">Peça este código ao gestor da sua concessionária.</small>
           </div>
+
           <div class="mb-3">
             <label class="form-label small fw-semibold text-secondary">WhatsApp (Atendimento aos Leads)</label>
             <input type="tel" v-model="formCadastro.whatsapp" @input="limitarWhatsapp" placeholder="Ex: 82999679667" required maxlength="11" class="form-control bg-light">

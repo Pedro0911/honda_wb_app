@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Zappmotos Gestão - Painel da Concessionária</title>
+
+  <!-- Bootstrap 5 CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Bootstrap Icons -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+
+  <style>
+    body { background-color: #f4f6f9; font-family: system-ui, -apple-system, sans-serif; }
+    .nav-pills .nav-link.active { background-color: #dc3545; }
+    .nav-pills .nav-link { color: #495057; font-weight: 600; }
+    .codigo-box { letter-spacing: 2px; font-size: 1.25rem; }
+  </style>
+</head>
+<body>
+
+  <div id="app">
+
+    <!-- ==================== TELA DE AUTENTICAÇÃO DA CONCESSIONÁRIA ==================== -->
+    <div v-if="!lojaLogada" class="container min-vh-100 d-flex align-items-center justify-content-center py-5 px-3">
+      <div class="card border-0 shadow-lg rounded-4 p-4 p-md-5 w-100" style="max-width: 480px; background: white;">
+        
+        <div class="text-center mb-4">
+          <span class="badge bg-dark text-uppercase mb-2 px-3 py-1">Área Corporativa</span>
+          <h2 class="fw-bold mb-0 text-dark"><span class="text-danger">ZAPP</span>MOTOS</h2>
+          <p class="text-muted small">Gestão de Tabelas e Equipe da Concessionária</p>
+        </div>
+
+        <ul class="nav nav-pills nav-justified mb-4 bg-light p-1 rounded-3">
+          <li class="nav-item">
+            <button class="nav-link py-2" :class="{ active: abaAuth === 'login' }" @click="abaAuth = 'login'">Entrar</button>
+          </li>
+          <li class="nav-item">
+            <button class="nav-link py-2" :class="{ active: abaAuth === 'cadastro' }" @click="abaAuth = 'cadastro'">Cadastrar Loja</button>
+          </li>
+        </ul>
+
+        <!-- LOGIN CONCESSIONÁRIA -->
+        <form v-if="abaAuth === 'login'" @submit.prevent="realizarLogin">
+          <div class="mb-3">
+            <label class="form-label small fw-semibold text-secondary">CNPJ da Loja</label>
+            <input type="text" v-model="formLogin.cnpj" @input="mascararCnpj('formLogin')" placeholder="00.000.000/0000-00" required maxlength="18" class="form-control form-control-lg bg-light">
+          </div>
+          <div class="mb-2">
+            <label class="form-label small fw-semibold text-secondary">Senha Administrativa</label>
+            <input :type="mostrarSenha ? 'text' : 'password'" v-model="formLogin.senha" placeholder="Sua senha" required class="form-control form-control-lg bg-light">
+          </div>
+          <div class="form-check mb-4">
+            <input class="form-check-input" type="checkbox" id="verSenhaLoja" v-model="mostrarSenha">
+            <label class="form-check-label small text-muted" for="verSenhaLoja">Visualizar senha</label>
+          </div>
+          <button type="submit" class="btn btn-danger btn-lg w-100 fw-bold rounded-3 shadow-sm" :disabled="carregandoAuth">
+            {{ carregandoAuth ? 'Acessando...' : 'Acessar Painel da Loja' }}
+          </button>
+        </form>
+
+        <!-- CADASTRO CONCESSIONÁRIA (COM IBGE) -->
+        <form v-if="abaAuth === 'cadastro'" @submit.prevent="cadastrarLoja">
+          <div class="mb-3">
+            <label class="form-label small fw-semibold text-secondary">Nome da Concessionária</label>
+            <input type="text" v-model="formCadastro.nomeLoja" placeholder="Ex: Honda Alagoas Motos" required class="form-control bg-light">
+          </div>
+          <div class="mb-3">
+            <label class="form-label small fw-semibold text-secondary">CNPJ (Será seu login)</label>
+            <input type="text" v-model="formCadastro.cnpj" @input="mascararCnpj('formCadastro')" placeholder="00.000.000/0000-00" required maxlength="18" class="form-control bg-light">
+          </div>
+
+          <!-- Select Estado (UF) - IBGE -->
+          <div class="mb-3">
+            <label class="form-label small fw-semibold text-secondary">Estado (UF)</label>
+            <select v-model="formCadastro.uf" @change="carregarCidades" required class="form-select bg-light">
+              <option value="">Selecione o Estado...</option>
+              <option v-for="uf in estados" :key="uf.sigla" :value="uf.sigla">{{ uf.nome }} ({{ uf.sigla }})</option>
+            </select>
+          </div>
+
+          <!-- Select Cidade - IBGE -->
+          <div class="mb-3">
+            <label class="form-label small fw-semibold text-secondary">Cidade</label>
+            <select v-model="formCadastro.cidade" :disabled="!formCadastro.uf" required class="form-select bg-light">
+              <option value="">{{ formCadastro.uf ? 'Selecione a cidade...' : 'Primeiro selecione o estado' }}</option>
+              <option v-for="cidade in cidades" :key="cidade.id" :value="cidade.nome">{{ cidade.nome }}</option>
+            </select>
+          </div>
+
+          <div class="mb-2">
+            <label class="form-label small fw-semibold text-secondary">Crie uma Senha de Gestor</label>
+            <input :type="mostrarSenha ? 'text' : 'password'" v-model="formCadastro.senha" placeholder="Mínimo 6 caracteres" required minlength="6" class="form-control bg-light">
+          </div>
+          <div class="form-check mb-4">
+            <input class="form-check-input" type="checkbox" id="verSenhaCadLoja" v-model="mostrarSenha">
+            <label class="form-check-label small text-muted" for="verSenhaCadLoja">Visualizar senha</label>
+          </div>
+          <button type="submit" class="btn btn-danger w-100 py-3 fw-bold rounded-3 shadow-sm" :disabled="carregandoAuth">
+            {{ carregandoAuth ? 'Gerando Código...' : 'Cadastrar Concessionária' }}
+          </button>
+        </form>
+
+      </div>
+    </div>
+
+
+    <!-- ==================== PAINEL DA CONCESSIONÁRIA (LOGADO) ==================== -->
+    <div v-else class="container-fluid py-4 px-md-5">
+
+      <!-- Header -->
+      <header class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 pb-3 bg-white p-3 rounded-4 shadow-sm gap-3">
+        <div class="d-flex align-items-center gap-3">
+          <div class="bg-dark text-white rounded-3 p-2 d-flex align-items-center justify-content-center" style="width: 46px; height: 46px;">
+            <i class="bi bi-building-gear fs-4"></i>
+          </div>
+          <div>
+            <h4 class="fw-bold mb-0 text-dark">{{ lojaLogada.nomeLoja }}</h4>
+            <small class="text-muted">CNPJ: {{ formatarCnpj(lojaLogada.cnpj) }} • {{ lojaLogada.cidade }} - {{ lojaLogada.uf }}</small>
+          </div>
+        </div>
+
+        <!-- Código de Segurança da Equipe -->
+        <div class="d-flex align-items-center gap-2 bg-danger-subtle border border-danger-subtle px-3 py-2 rounded-3">
+          <div>
+            <span class="d-block text-danger fw-bold" style="font-size: 11px;">CÓDIGO DE ACESSO DA EQUIPE</span>
+            <strong class="font-monospace text-dark codigo-box">{{ lojaLogada.codigoAcesso }}</strong>
+          </div>
+          <button @click="copiarCodigo" class="btn btn-danger btn-sm ms-2" title="Copiar código para enviar aos vendedores">
+            <i class="bi" :class="codigoCopiado ? 'bi-check-lg' : 'bi-clipboard'"></i>
+          </button>
+        </div>
+
+        <div class="d-flex gap-2">
+          <button @click="abaAtual = 'planos'" class="btn rounded-pill px-3 fw-semibold" :class="abaAtual === 'planos' ? 'btn-danger' : 'btn-outline-secondary'">
+            <i class="bi bi-bicycle me-1"></i> Motos & Planos
+          </button>
+          <button @click="abaAtual = 'vendedores'" class="btn rounded-pill px-3 fw-semibold" :class="abaAtual === 'vendedores' ? 'btn-danger' : 'btn-outline-secondary'">
+            <i class="bi bi-people me-1"></i> Equipe ({{ vendedores.length }})
+          </button>
+          <button @click="deslogar" class="btn btn-light text-danger rounded-pill px-3">
+            <i class="bi bi-box-arrow-right"></i> Sair
+          </button>
+        </div>
+      </header>
+
+
+      <!-- ==================== ABA 1: GERENCIADOR DE MOTOS E PLANOS ==================== -->
+      <main v-if="abaAtual === 'planos'">
+        <div class="row g-4">
+          
+          <!-- Formulário de Cadastro / Edição de Moto -->
+          <div class="col-lg-4">
+            <div class="card border-0 shadow-sm rounded-4 p-4 bg-white">
+              <h5 class="fw-bold text-dark mb-3">
+                {{ editandoId ? 'Editar Modelo e Planos' : 'Cadastrar Nova Moto' }}
+              </h5>
+              
+              <form @submit.prevent="salvarMoto">
+                <div class="mb-3">
+                  <label class="form-label small fw-semibold text-secondary">Modelo da Moto</label>
+                  <input type="text" v-model="formMoto.modelo" placeholder="Ex: CG 160 TITAN" required class="form-control bg-light">
+                </div>
+
+                <div class="mb-3">
+                  <label class="form-label small fw-semibold text-secondary">Valor do Crédito / Bem (R$)</label>
+                  <input type="number" step="0.01" v-model.number="formMoto.valorCredito" placeholder="Ex: 19500.00" required class="form-control bg-light">
+                </div>
+
+                <div class="mb-3">
+                  <label class="form-label small fw-semibold text-secondary">Caminho da Imagem (Pasta img/)</label>
+                  <input type="text" v-model="formMoto.imagem" placeholder="Ex: img/cg160-titan.png" required class="form-control bg-light">
+                  <small class="text-muted" style="font-size: 11px;">Use o nome do arquivo dentro da pasta <code>img/</code> do app.</small>
+                </div>
+
+                <hr class="my-3">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                  <label class="form-label small fw-bold text-dark mb-0">Planos de Consórcio (Prazos)</label>
+                  <button type="button" @click="adicionarPlano" class="btn btn-outline-danger btn-sm py-0 px-2">
+                    + Prazo
+                  </button>
+                </div>
+
+                <div v-for="(plano, index) in formMoto.planos" :key="index" class="row g-2 mb-2 align-items-center">
+                  <div class="col-5">
+                    <div class="input-group input-group-sm">
+                      <input type="number" v-model.number="plano.meses" placeholder="80" required class="form-control">
+                      <span class="input-group-text">x</span>
+                    </div>
+                  </div>
+                  <div class="col-5">
+                    <div class="input-group input-group-sm">
+                      <span class="input-group-text">R$</span>
+                      <input type="number" step="0.01" v-model.number="plano.parcela" placeholder="320.50" required class="form-control">
+                    </div>
+                  </div>
+                  <div class="col-2 text-end">
+                    <button type="button" @click="removerPlano(index)" class="btn btn-sm text-danger" v-if="formMoto.planos.length > 1">
+                      <i class="bi bi-trash"></i>
+                    </button>
+                  </div>
+                </div>
+
+                <div class="d-grid gap-2 mt-4">
+                  <button type="submit" class="btn btn-danger fw-bold py-2 rounded-3" :disabled="salvandoMoto">
+                    {{ salvandoMoto ? 'Salvando no Firebase...' : (editandoId ? 'Salvar Alterações' : 'Publicar no App') }}
+                  </button>
+                  <button type="button" v-if="editandoId" @click="cancelarEdicao" class="btn btn-light btn-sm text-muted">
+                    Cancelar Edição
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+
+          <!-- Lista de Motos Cadastradas no Firestore -->
+          <div class="col-lg-8">
+            <div class="card border-0 shadow-sm rounded-4 p-4 bg-white">
+              <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="fw-bold text-dark mb-0">Tabela Vigente no Aplicativo ({{ motos.length }})</h5>
+                <div class="d-flex gap-2">
+                  <button @click="importarMotosJson" class="btn btn-sm btn-outline-success rounded-pill" :disabled="importandoJson" title="Cadastra automaticamente todas as motos do motos.json no Firestore">
+                    <i class="bi bi-file-earmark-arrow-up me-1"></i> {{ importandoJson ? 'Importando...' : 'Importar do motos.json' }}
+                  </button>
+                  <button @click="carregarMotos" class="btn btn-sm btn-outline-secondary rounded-pill">
+                    <i class="bi bi-arrow-clockwise"></i> Atualizar
+                  </button>
+                </div>
+              </div>
+
+              <div v-if="carregandoMotos" class="text-center py-5 text-muted">
+                <div class="spinner-border text-danger"></div>
+                <p class="small mt-2">Carregando tabela do Firestore...</p>
+              </div>
+
+              <div v-else-if="motos.length === 0" class="text-center py-5 text-muted bg-light rounded-4">
+                <i class="bi bi-bicycle fs-1 text-secondary"></i>
+                <p class="mt-2 mb-0 fw-semibold">Nenhuma moto cadastrada nesta loja ainda.</p>
+                <small>Use o botão de importação acima ou cadastre manualmente ao lado.</small>
+              </div>
+
+              <div v-else class="row g-3">
+                <div v-for="moto in motos" :key="moto.id" class="col-md-6">
+                  <div class="border rounded-4 p-3 h-100 d-flex flex-column justify-content-between" :class="{ 'opacity-50 bg-light': moto.ativo === false }">
+                    <div>
+                      <div class="d-flex justify-content-between align-items-start mb-2">
+                        <div>
+                          <h6 class="fw-bold text-dark mb-0">{{ moto.modelo }}</h6>
+                          <small class="text-muted">Crédito: R$ {{ formatarMoeda(moto.valorCredito) }}</small>
+                        </div>
+                        <span class="badge" :class="moto.ativo !== false ? 'bg-success-subtle text-success' : 'bg-secondary'">
+                          {{ moto.ativo !== false ? 'Ativa' : 'Pausada' }}
+                        </span>
+                      </div>
+
+                      <div class="bg-light rounded-3 p-2 my-2">
+                        <div v-for="p in moto.planos" :key="p.meses" class="d-flex justify-content-between small py-1 border-bottom border-white">
+                          <span class="fw-semibold text-secondary">{{ p.meses }} meses</span>
+                          <span class="fw-bold text-dark">R$ {{ formatarMoeda(p.parcela) }}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="d-flex gap-2 mt-2 pt-2 border-top">
+                      <button @click="editarMoto(moto)" class="btn btn-sm btn-outline-primary flex-grow-1">
+                        <i class="bi bi-pencil me-1"></i> Editar Valores
+                      </button>
+                      <button @click="alternarStatusMoto(moto)" class="btn btn-sm" :class="moto.ativo !== false ? 'btn-outline-warning' : 'btn-outline-success'">
+                        {{ moto.ativo !== false ? 'Pausar' : 'Ativar' }}
+                      </button>
+                      <button @click="excluirMoto(moto.id)" class="btn btn-sm btn-outline-danger">
+                        <i class="bi bi-trash"></i>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+        </div>
+      </main>
+
+
+      <!-- ==================== ABA 2: EQUIPE DE VENDEDORES CADASTRADOS ==================== -->
+      <main v-if="abaAtual === 'vendedores'">
+        <div class="card border-0 shadow-sm rounded-4 p-4 bg-white">
+          <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 gap-2">
+            <div>
+              <h5 class="fw-bold text-dark mb-1">Consultores Vinculados à Loja</h5>
+              <p class="text-muted small mb-0">
+                Apenas vendedores com o código <strong>{{ lojaLogada.codigoAcesso }}</strong> conseguem criar conta e usar o link da concessionária.
+              </p>
+            </div>
+            <button @click="carregarVendedores" class="btn btn-outline-secondary btn-sm rounded-pill px-3">
+              <i class="bi bi-arrow-clockwise me-1"></i> Atualizar Lista
+            </button>
+          </div>
+
+          <div class="table-responsive">
+            <table class="table table-hover align-middle">
+              <thead class="table-light small text-uppercase text-secondary">
+                <tr>
+                  <th>Consultor</th>
+                  <th>CPF</th>
+                  <th>WhatsApp</th>
+                  <th>Slug do Link</th>
+                  <th>Status</th>
+                  <th class="text-end">Controle de Acesso</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-if="vendedores.length === 0">
+                  <td colspan="6" class="text-center py-4 text-muted">
+                    Nenhum vendedor cadastrado com o código desta concessionária ainda.
+                  </td>
+                </tr>
+                <tr v-for="v in vendedores" :key="v.cpf">
+                  <td class="fw-bold text-dark">{{ v.nome }}</td>
+                  <td class="font-monospace small">{{ v.cpf }}</td>
+                  <td class="font-monospace small">{{ v.whatsapp }}</td>
+                  <td><span class="badge bg-light text-dark border">{{ v.slug }}</span></td>
+                  <td>
+                    <span class="badge" :class="v.ativo !== false ? 'bg-success' : 'bg-danger'">
+                      {{ v.ativo !== false ? 'Autorizado' : 'Bloqueado' }}
+                    </span>
+                  </td>
+                  <td class="text-end">
+                    <button @click="alternarStatusVendedor(v)" class="btn btn-sm rounded-pill px-3" :class="v.ativo !== false ? 'btn-outline-danger' : 'btn-success'">
+                      {{ v.ativo !== false ? 'Bloquear Acesso' : 'Liberar Acesso' }}
+                    </button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </main>
+
+    </div>
+  </div>
+
+  <!-- Vue 3 & Firebase Compat SDKs -->
+  <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+
+  <script src="loja.js"></script>
+</body>
+</html>

@@ -58,23 +58,23 @@ createApp({
 
       this.catalogoMotos.forEach(moto => {
         if (!moto.planos || !moto.planos.length) return;
-        const planosValidos = moto.planos.filter(p => p.valor <= this.lead.orcamento);
+        const planosValidos = moto.planos.filter(p => p.parcela <= this.lead.orcamento);
         if (planosValidos.length > 0) {
           const melhorPlano = planosValidos.reduce((prev, curr) => 
-            (prev.parcelas > curr.parcelas) ? prev : curr
+            (prev.meses > curr.meses) ? prev : curr
           );
           resultado.push({ moto: moto, plano: melhorPlano });
         }
       });
 
-      return resultado.sort((a, b) => b.plano.valor - a.plano.valor);
+      return resultado.sort((a, b) => b.plano.parcela - a.plano.parcela);
     },
 
     // 📊 REGRA HONDA: Calcula em tempo real o valor do bem e a probabilidade de contemplação do lance
     analiseLance() {
       if (!this.planoSelecionado || !this.lead.lanceAproximado || this.lead.lanceAproximado <= 0) {
         return { 
-          valorBem: this.planoSelecionado ? (this.planoSelecionado.valor * this.planoSelecionado.parcelas) : 0, 
+          valorBem: this.planoSelecionado ? (this.planoSelecionado.parcela * this.planoSelecionado.meses) : 0, 
           percentual: 0, 
           texto: 'Informe um valor para analisar suas chances', 
           classe: 'text-muted', 
@@ -83,7 +83,7 @@ createApp({
       }
 
       // Fórmula oficial Honda: Parcela x Quantidade de Meses
-      const valorBem = this.planoSelecionado.valor * this.planoSelecionado.parcelas;
+      const valorBem = this.planoSelecionado.parcela * this.planoSelecionado.meses;
       
       // % do lance em relação ao total do bem
       const percentual = (this.lead.lanceAproximado / valorBem) * 100;
@@ -122,17 +122,15 @@ createApp({
     }
   },
   methods: {
-    // Redireciona para a tela de criação de conta no Admin
     irParaCadastro() {
       window.location.href = './admin/index.html#criar';
     },
 
-    // Redireciona para o painel de login/admin
     irParaLogin() {
       window.location.href = './admin/index.html';
     },
 
-    // 🔍 Identifica o consultor dono do link via query string (?ref=slug ou ?v=slug)
+    // 🔍 Identifica o consultor dono do link e carrega o catálogo do Firestore da loja dele
     async verificarConsultorRef() {
       const urlParams = new URLSearchParams(window.location.search);
       const ref = urlParams.get('ref') || urlParams.get('v');
@@ -147,21 +145,55 @@ createApp({
         this.consultorRef = slugFinal;
         this.modoPainelVendedor = false; // Entra na tela do Lead (Simulador)
         try {
+          // Busca o consultor por slug ou CPF
           const snapshot = await db.collection('consultores').where('slug', '==', slugFinal).limit(1).get();
           
+          let concessionariaId = null;
           if (!snapshot.empty) {
             this.consultorAtual = snapshot.docs[0].data();
+            concessionariaId = this.consultorAtual.concessionariaId;
           } else {
             const docCpf = await db.collection('consultores').doc(slugFinal.replace(/\D/g, '')).get();
             if (docCpf.exists) {
               this.consultorAtual = docCpf.data();
+              concessionariaId = this.consultorAtual.concessionariaId;
             }
           }
+
+          // Carrega as motos do Firestore vinculadas à concessionária do vendedor
+          await this.carregarCatalogoFirestore(concessionariaId);
+
         } catch (e) {
           console.error("Erro ao buscar consultor dono do link:", e);
+          this.carregandoCatalogo = false;
+          this.erroCatalogo = true;
         }
       } else {
         this.modoPainelVendedor = true;
+        this.carregandoCatalogo = false;
+      }
+    },
+
+    // 🏍️ Carrega os planos e motos direto do Firestore (substituindo o motos.json)
+    async carregarCatalogoFirestore(concessionariaId) {
+      try {
+        let query = db.collection('planos_consorcio').where('ativo', '==', true);
+        
+        if (concessionariaId) {
+          query = query.where('concessionariaId', '==', concessionariaId);
+        }
+
+        const snapshot = await query.get();
+        this.catalogoMotos = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        this.carregandoCatalogo = false;
+
+        if (this.catalogoMotos.length === 0) {
+          console.warn("Nenhum plano ativo encontrado para esta concessionária.");
+        }
+      } catch (e) {
+        console.error("Erro ao carregar catálogo do Firestore:", e);
+        this.carregandoCatalogo = false;
+        this.erroCatalogo = true;
       }
     },
 
@@ -211,6 +243,7 @@ createApp({
       try {
         const docRef = await db.collection("leads").add({
           consultorCpf: consultorIdPadrao,
+          concessionariaId: this.consultorAtual ? this.consultorAtual.concessionariaId : '',
           nome: this.lead.nome,
           whatsapp: this.lead.whatsapp,
           uf: this.lead.uf,
@@ -257,12 +290,12 @@ createApp({
         try {
           await db.collection("leads").doc(this.leadId).update({
             motoInteresse: moto.modelo,
-            planoMeses: plano.parcelas,
+            planoMeses: plano.meses,
             planoSelecionado: {
-              parcelas: plano.parcelas,
-              valor: plano.valor
+              parcelas: plano.meses,
+              valor: plano.parcela
             },
-            valorTotalBem: plano.valor * plano.parcelas,
+            valorTotalBem: plano.parcela * plano.meses,
             lanceAproximado: this.lead.lanceAproximado || 0,
             percentualLance: Number(analise.percentual) || 0,
             chanceContemplacao: analise.texto,
@@ -302,7 +335,6 @@ createApp({
 
     // 📲 Direciona o WhatsApp para o consultor incluindo a análise completa de lance
     async abrirWhatsApp() {
-      // Garante a gravação final do lance no Firestore antes de ir pro WhatsApp
       await this.salvarLanceFirestore();
 
       const numDestino = this.consultorAtual && this.consultorAtual.whatsapp
@@ -312,8 +344,8 @@ createApp({
       const nomeConsultor = this.consultorAtual ? this.consultorAtual.nome : 'Pedro';
       const nomeClient = this.lead.nome || "Cliente";
       const moto = this.motoSelecionada ? this.motoSelecionada.modelo : '';
-      const parcelas = this.planoSelecionado ? this.planoSelecionado.parcelas : 0;
-      const valor = this.planoSelecionado ? this.formatarMoeda(this.planoSelecionado.valor) : '0,00';
+      const parcelas = this.planoSelecionado ? this.planoSelecionado.meses : 0;
+      const valor = this.planoSelecionado ? this.formatarMoeda(this.planoSelecionado.parcela) : '0,00';
       
       const analise = this.analiseLance;
       const lanceTexto = this.lead.lanceAproximado > 0 
@@ -329,22 +361,5 @@ createApp({
   async mounted() {
     await this.verificarConsultorRef();
     this.carregarEstados();
-
-    if (!this.modoPainelVendedor) {
-      fetch('motos.json')
-        .then(response => {
-          if (!response.ok) throw new Error(`Erro de rede ao carregar JSON: ${response.status}`);
-          return response.json();
-        })
-        .then(data => {
-          this.catalogoMotos = data.catalogo_honda;
-          this.carregandoCatalogo = false;
-        })
-        .catch(error => {
-          console.error("Erro ao carregar motos.json:", error);
-          this.carregandoCatalogo = false;
-          this.erroCatalogo = true;
-        });
-    }
   }
 }).mount('#app');

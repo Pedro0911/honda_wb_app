@@ -33,8 +33,8 @@ createApp({
       // Form Login
       formLogin: { cpf: '', senha: '' },
 
-      // Form Cadastro (#1)
-      formCadastro: { nome: '', cpf: '', empresaHonda: '', whatsapp: '', senha: '' },
+      // Form Cadastro (Com Código de Acesso da Concessionária)
+      formCadastro: { nome: '', cpf: '', codigoAcesso: '', whatsapp: '', senha: '' },
 
       // Form Perfil (#2)
       formPerfil: { nome: '', empresaHonda: '', whatsapp: '', novaSenha: '' },
@@ -103,9 +103,11 @@ createApp({
       return valor.toFixed(2).replace('.', ',');
     },
 
-   // 🔑 CADASTRO DE CONSULTOR (Com Slug Seguro para ocultar o CPF na URL)
+   // 🔑 CADASTRO DE CONSULTOR (Valida o Código de Acesso da Concessionária)
     async cadastrarConsultor() {
       const cpfLimpo = this.limparCpf(this.formCadastro.cpf);
+      const codigoInput = (this.formCadastro.codigoAcesso || '').trim().toUpperCase();
+
       if (cpfLimpo.length !== 11) {
         alert("Por favor, digite um CPF válido com 11 dígitos.");
         return;
@@ -113,6 +115,22 @@ createApp({
       this.carregandoAuth = true;
 
       try {
+        // 1. Valida se a concessionária existe através do código de acesso
+        const queryLoja = await db.collection('concessionarias')
+          .where('codigoAcesso', '==', codigoInput)
+          .get();
+
+        if (queryLoja.empty) {
+          alert("Código de Acesso da Concessionária inválido ou não encontrado. Verifique com o gestor da loja.");
+          this.carregandoAuth = false;
+          return;
+        }
+
+        const lojaDoc = queryLoja.docs[0];
+        const dadosLoja = lojaDoc.data();
+        const concessionariaId = lojaDoc.id; // CNPJ da concessionária
+
+        // 2. Verifica se o consultor já existe
         const docRef = db.collection('consultores').doc(cpfLimpo);
         const docSnap = await docRef.get();
 
@@ -122,7 +140,7 @@ createApp({
           return;
         }
 
-        // Cria um slug/código seguro e limpo para usar na URL
+        // 3. Cria o slug seguro para a URL
         const nomeBruto = this.formCadastro.nome || 'consultor';
         const primeiroNome = nomeBruto.trim().split(' ')[0].toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
         const randomId = Math.random().toString(36).substring(2, 7);
@@ -130,11 +148,13 @@ createApp({
 
         const dadosConsultor = {
           cpf: cpfLimpo,
-          slug: slugSeguro, // <- O identificador público seguro
+          slug: slugSeguro,
           nome: this.formCadastro.nome,
-          empresaHonda: this.formCadastro.empresaHonda,
+          empresaHonda: dadosLoja.nomeLoja, // Puxa automaticamente o nome oficial da loja
+          concessionariaId: concessionariaId, // Vínculo corporativo antifraude
           whatsapp: this.formCadastro.whatsapp.replace(/\D/g, ''),
           senha: this.formCadastro.senha,
+          ativo: true,
           dataCriacao: firebase.firestore.FieldValue.serverTimestamp()
         };
 
@@ -148,7 +168,7 @@ createApp({
       }
     },
 
-    // 🔑 LOGIN DE CONSULTOR (#1)
+    // 🔑 LOGIN DE CONSULTOR
     async realizarLogin() {
       const cpfLimpo = this.limparCpf(this.formLogin.cpf);
       this.carregandoAuth = true;
@@ -161,6 +181,13 @@ createApp({
         }
 
         const consultor = docSnap.data();
+        
+        // Verifica se o acesso está ativo pela concessionária
+        if (consultor.ativo === false) {
+          alert("Seu acesso foi temporariamente bloqueado pela concessionária. Entre em contato com o gestor.");
+          return;
+        }
+
         if (consultor.senha !== this.formLogin.senha) {
           alert("Senha incorreta.");
           return;
@@ -196,13 +223,9 @@ createApp({
         const cpfLogado = (this.consultorLogado.cpf || '').replace(/\D/g, '');
         const slugLogado = this.consultorLogado.slug || '';
 
-        // Pega TODOS os leads do Firestore
         const snapshot = await db.collection('leads').get();
         const todosOsLeads = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
-        console.log("Total de leads brutos encontrados no Firestore:", todosOsLeads.length);
-
-        // Filtro flexível para exibir os seus leads e os testes pendentes
         this.leads = todosOsLeads.filter(l => {
           const leadRef = String(l.consultorCpf || '').trim();
           
@@ -215,14 +238,11 @@ createApp({
           );
         });
 
-        // Ordena por data (mais recente primeiro)
         this.leads.sort((a, b) => {
           const tA = a.dataCriacao?.seconds || 0;
           const tB = b.dataCriacao?.seconds || 0;
           return tB - tA;
         });
-
-        console.log(`Leads exibidos para o consultor ${this.consultorLogado.nome}:`, this.leads.length);
       } catch (e) {
         console.error("Erro ao carregar leads:", e);
         alert("Erro ao carregar leads. Veja o console (F12).");
@@ -231,7 +251,7 @@ createApp({
       }
     },
 
-    // ✏️ ATUALIZAR PERFIL (#2)
+    // ✏️ ATUALIZAR PERFIL
     async atualizarPerfil() {
       this.salvandoPerfil = true;
       try {
@@ -256,7 +276,7 @@ createApp({
       }
     },
 
-    // 🔗 GERA O LINK PÚBLICO SEGURO DO VENDEDOR (Compatível com GitHub Pages e Localhost)
+    // 🔗 GERA O LINK PÚBLICO SEGURO DO VENDEDOR
     gerarMeuLinkPublico() {
       if (!this.consultorLogado) return '';
       
@@ -272,7 +292,6 @@ createApp({
         localStorage.setItem('zappmotos_consultor', JSON.stringify(this.consultorLogado));
       }
 
-      // Ajusta o caminho base dependendo se está rodando localmente ou no GitHub Pages (honda_wb_app)
       const baseUrl = window.location.hostname.includes('github.io') 
         ? `${window.location.origin}/honda_wb_app/` 
         : `${window.location.origin}/`;
@@ -323,11 +342,10 @@ createApp({
     }
   },
   mounted() {
-    // Restaura sessão se houver no localStorage
     const consultorSalvo = localStorage.getItem('zappmotos_consultor');
     if (consultorSalvo) {
       try {
-        this.entrarSessao(JSON.parse(consultorSalvo));
+        this.entrarSessao(JSON.parse(consultorSalvor = consultorSalvo ? JSON.parse(consultorSalvo) : null));
       } catch (e) {}
     }
   }

@@ -174,7 +174,7 @@ createApp({
       }
     },
 
-    // 🏍️ Carrega os planos e motos direto do Firestore (substituindo o motos.json)
+    // 🏍️ Carrega os planos e motos direto do Firestore (com compatibilidade total de campos)
     async carregarCatalogoFirestore(concessionariaId) {
       try {
         let query = db.collection('planos_consorcio').where('ativo', '==', true);
@@ -184,7 +184,29 @@ createApp({
         }
 
         const snapshot = await query.get();
-        this.catalogoMotos = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        
+        this.catalogoMotos = snapshot.docs.map(doc => {
+          const dados = doc.data();
+          
+          // Garante compatibilidade tanto com (meses/parcela) quanto com (parcelas/valor) no HTML
+          const planosNormalizados = (dados.planos || []).map(p => {
+            const qtdMeses = Number(p.meses || p.parcelas || 0);
+            const valorParcela = Number(p.parcela || p.valor || 0);
+            return {
+              meses: qtdMeses,
+              parcelas: qtdMeses, // Mantém compatibilidade com o index.html
+              parcela: valorParcela,
+              valor: valorParcela  // Mantém compatibilidade com o index.html
+            };
+          });
+
+          return { 
+            id: doc.id, 
+            ...dados,
+            planos: planosNormalizados
+          };
+        });
+
         this.carregandoCatalogo = false;
 
         if (this.catalogoMotos.length === 0) {

@@ -102,6 +102,10 @@ createApp({
       if (typeof valor !== 'number') return '0,00';
       return valor.toFixed(2).replace('.', ',');
     },
+    deslogar() {
+      this.consultorLogado = null;
+      localStorage.removeItem('zappmotos_consultor');
+    },
 
    // 🔑 CADASTRO DE CONSULTOR (Valida o Código de Acesso da Concessionária)
     async cadastrarConsultor() {
@@ -202,17 +206,28 @@ createApp({
       }
     },
 
-    entrarSessao(consultor) {
+    async entrarSessao(consultor) {
       this.consultorLogado = consultor;
       this.formPerfil.nome = consultor.nome;
-      this.formPerfil.empresaHonda = consultor.empresaHonda;
+      this.formPerfil.empresaHonda = consultor.empresaHonda || 'Carregando concessionária...';
       this.formPerfil.whatsapp = consultor.whatsapp;
-      localStorage.setItem('zappmotos_consultor', JSON.stringify(consultor));
+
+      // 🔄 Busca o nome atualizado da concessionária direto no Firestore pelo concessionariaId
+      if (consultor.concessionariaId) {
+        try {
+          const lojaDoc = await db.collection('concessionarias').doc(consultor.concessionariaId).get();
+          if (lojaDoc.exists) {
+            const nomeOficialLoja = lojaDoc.data().nomeLoja;
+            this.consultorLogado.empresaHonda = nomeOficialLoja;
+            this.formPerfil.empresaHonda = nomeOficialLoja;
+          }
+        } catch (e) {
+          console.error("Erro ao sincronizar nome da concessionária:", e);
+        }
+      }
+
+      localStorage.setItem('zappmotos_consultor', JSON.stringify(this.consultorLogado));
       this.carregarLeads();
-    },
-    deslogar() {
-      this.consultorLogado = null;
-      localStorage.removeItem('zappmotos_consultor');
     },
 
     // 📊 CARREGA TODOS OS LEADS DA COLEÇÃO E EXIBE NO PAINEL
@@ -257,7 +272,6 @@ createApp({
       try {
         const updateData = {
           nome: this.formPerfil.nome,
-          empresaHonda: this.formPerfil.empresaHonda,
           whatsapp: this.formPerfil.whatsapp.replace(/\D/g, '')
         };
         if (this.formPerfil.novaSenha) {

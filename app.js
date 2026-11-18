@@ -254,18 +254,23 @@ createApp({
       }
     },
 
-    // TELA 1: Salva o lead no Firestore
+    // TELA 1: Salva o lead no Firestore com referências precisas para o painel
     async avancarEtapa1() {
       if (!this.lead.nome || !this.lead.whatsapp || !this.lead.uf || !this.lead.cidade || !this.lead.aceitouTermos) return;
 
-      const consultorIdPadrao = this.consultorAtual 
+      const consultorIdentificador = this.consultorAtual 
         ? (this.consultorAtual.slug || this.consultorAtual.cpf) 
         : (this.consultorRef || 'PADRAO');
 
+      const concessionariaIdLoja = this.consultorAtual 
+        ? (this.consultorAtual.concessionariaId || '') 
+        : '';
+
       try {
         const docRef = await db.collection("leads").add({
-          consultorCpf: consultorIdPadrao,
-          concessionariaId: this.consultorAtual ? this.consultorAtual.concessionariaId : '',
+          consultorCpf: consultorIdentificador, // Grava slug ou CPF para o filtro do admin
+          consultorSlug: this.consultorAtual ? this.consultorAtual.slug : '',
+          concessionariaId: concessionariaIdLoja, // Grava o vínculo corporativo da loja
           nome: this.lead.nome,
           whatsapp: this.lead.whatsapp,
           uf: this.lead.uf,

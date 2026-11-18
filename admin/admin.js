@@ -102,6 +102,8 @@ createApp({
       if (typeof valor !== 'number') return '0,00';
       return valor.toFixed(2).replace('.', ',');
     },
+    
+    // 🚪 SAIR / DESLOGAR DO SISTEMA
     deslogar() {
       this.consultorLogado = null;
       localStorage.removeItem('zappmotos_consultor');
@@ -132,7 +134,7 @@ createApp({
 
         const lojaDoc = queryLoja.docs[0];
         const dadosLoja = lojaDoc.data();
-        const concessionariaId = lojaDoc.id; // CNPJ da concessionária
+        const concessionariaId = lojaDoc.id; // ID / CNPJ da concessionária
 
         // 2. Verifica se o consultor já existe
         const docRef = db.collection('consultores').doc(cpfLimpo);
@@ -230,27 +232,29 @@ createApp({
       this.carregarLeads();
     },
 
-    // 📊 CARREGA TODOS OS LEADS DA COLEÇÃO E EXIBE NO PAINEL
+    // 📊 CARREGA TODOS OS LEADS DA COLEÇÃO COM FILTRO ROBUSTO (CPF, Slug e Loja)
     async carregarLeads() {
       if (!this.consultorLogado) return;
       this.carregando = true;
       try {
         const cpfLogado = (this.consultorLogado.cpf || '').replace(/\D/g, '');
-        const slugLogado = this.consultorLogado.slug || '';
+        const slugLogado = (this.consultorLogado.slug || '').trim();
+        const concessionariaLogada = (this.consultorLogado.concessionariaId || '').trim();
 
         const snapshot = await db.collection('leads').get();
         const todosOsLeads = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
         this.leads = todosOsLeads.filter(l => {
           const leadRef = String(l.consultorCpf || '').trim();
+          const leadLoja = String(l.concessionariaId || '').trim();
           
-          return (
-            leadRef === cpfLogado || 
-            leadRef === slugLogado || 
-            leadRef === 'PADRAO' || 
-            leadRef === '' ||
-            leadRef.includes(cpfLogado)
-          );
+          const bateCpf = leadRef === cpfLogado;
+          const bateSlug = leadRef === slugLogado;
+          const bateLoja = concessionariaLogada && leadLoja === concessionariaLogada;
+          const ehPadrao = leadRef === 'PADRAO' || leadRef === '';
+
+          // O consultor enxerga o lead se for direcionado para ele ou para a loja dele
+          return bateCpf || bateSlug || bateLoja || ehPadrao;
         });
 
         this.leads.sort((a, b) => {
@@ -266,7 +270,7 @@ createApp({
       }
     },
 
-    // ✏️ ATUALIZAR PERFIL
+    // ✏️ ATUALIZAR PERFIL (Nome, WhatsApp e Senha)
     async atualizarPerfil() {
       this.salvandoPerfil = true;
       try {
@@ -285,6 +289,7 @@ createApp({
         alert("Dados atualizados com sucesso!");
       } catch (e) {
         console.error("Erro ao atualizar perfil:", e);
+        alert("Erro ao atualizar perfil.");
       } finally {
         this.salvandoPerfil = false;
       }
@@ -359,8 +364,10 @@ createApp({
     const consultorSalvo = localStorage.getItem('zappmotos_consultor');
     if (consultorSalvo) {
       try {
-        this.entrarSessao(JSON.parse(consultorSalvor = consultorSalvo ? JSON.parse(consultorSalvo) : null));
-      } catch (e) {}
+        this.entrarSessao(JSON.parse(consultorSalvo));
+      } catch (e) {
+        console.error("Erro ao restaurar sessão:", e);
+      }
     }
   }
 }).mount('#app');

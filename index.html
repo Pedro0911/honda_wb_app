@@ -31,17 +31,12 @@
           <div class="card border-0 bg-light rounded-4 p-4 text-center mb-4">
             <h1 class="fs-4 fw-bold text-dark mb-2">Venda mais consórcios sem o desgaste da prospecção fria</h1>
             <p class="small text-muted mb-3">Capte leads qualificados através de simuladores inteligentes com captação de lances e dossiê comercial completo.</p>
-            
-            <!-- 🔒 Badge de Assinatura Oculto Conforme Solicitado -->
-            <!-- <div class="badge bg-danger text-white py-2 px-3 rounded-pill fw-bold">Plano Profissional: R$ 37,90/mês</div> -->
           </div>
 
           <div class="d-grid gap-3">
-            <!-- Redireciona via método irParaCadastro no app.js -->
             <button class="btn btn-danger py-3 fw-bold rounded-3 shadow-sm" @click="irParaCadastro">
               <i class="bi bi-person-plus-fill me-2"></i> Criar minha conta de consultor
             </button>
-            <!-- Redireciona via método irParaLogin no app.js -->
             <button class="btn btn-outline-dark py-3 fw-bold rounded-3" @click="irParaLogin">
               <i class="bi bi-box-arrow-in-right me-2"></i> Já tenho conta (Fazer Login)
             </button>
@@ -85,7 +80,7 @@
       </header>
 
       <!-- Conteúdo das Telas do Lead -->
-      <div class="app-content flex-grow-1 d-flex flex-column">
+      <div class="app-content flex-grow-1 d-flex flex-column justify-content-between">
 
         <!-- TELA 1: CADASTRO -->
         <section v-if="etapa === 1" class="tela-1 p-4 d-flex flex-column justify-content-between flex-grow-1 text-white">
@@ -301,6 +296,18 @@
             </p>
           </div>
         </section>
+
+        <!-- Rodapé do Cliente (Exibe o Instagram do Consultor se preenchido) -->
+        <footer v-if="!modoPainelVendedor" class="text-center py-3 border-top mt-auto bg-white">
+          <div v-if="consultorAtual && consultorAtual.instagram">
+            <a :href="'https://instagram.com/' + consultorAtual.instagram" target="_blank" class="text-decoration-none text-secondary small fw-semibold">
+              <i class="bi bi-instagram text-danger me-1"></i> Siga no Instagram: <strong>@{{ consultorAtual.instagram }}</strong>
+            </a>
+          </div>
+          <div class="text-muted" style="font-size: 10px;">
+            Plataforma Zappmotos &bull; Atendimento Personalizado
+          </div>
+        </footer>
 
       </div>
     </main>

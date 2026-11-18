@@ -61,6 +61,7 @@
             <button class="nav-link py-2" :class="{ active: abaAuth === 'cadastro' }" @click="abaAuth = 'cadastro'">Criar Conta</button>
           </li>
         </ul>
+        
 
         <!-- FORMS DE LOGIN -->
         <form v-if="abaAuth === 'login'" @submit.prevent="realizarLogin">
@@ -94,7 +95,7 @@
             <input type="text" v-model="formCadastro.cpf" @input="mascararCpf('formCadastro')" placeholder="000.000.000-00" required maxlength="14" class="form-control bg-light">
           </div>
 
-          <!-- 🔑 NOVO CAMPO: Código de Acesso da Concessionária -->
+          <!-- 🔑 Código de Acesso da Concessionária -->
           <div class="mb-3">
             <label class="form-label small fw-semibold text-secondary">Código de Acesso da Concessionária</label>
             <input type="text" v-model="formCadastro.codigoAcesso" placeholder="Ex: HONDA-4829" required class="form-control bg-light text-uppercase font-monospace">
@@ -105,17 +106,45 @@
             <label class="form-label small fw-semibold text-secondary">WhatsApp (Atendimento aos Leads)</label>
             <input type="tel" v-model="formCadastro.whatsapp" @input="limitarWhatsapp" placeholder="Ex: 82999679667" required maxlength="11" class="form-control bg-light">
           </div>
+
+          <div class="mb-3">
+            <label class="form-label small fw-semibold text-secondary">Instagram Profissional (Opcional)</label>
+            <div class="input-group">
+              <span class="input-group-text bg-light text-muted">@</span>
+              <input type="text" v-model="formCadastro.instagram" placeholder="seu_instagram" class="form-control bg-light">
+            </div>
+            <small class="text-muted" style="font-size: 11px;">Aparecerá no rodapé do seu simulador para gerar mais autoridade.</small>
+          </div>
+          
           <div class="mb-2">
             <label class="form-label small fw-semibold text-secondary">Crie uma Senha</label>
             <input :type="mostrarSenhaCadastro ? 'text' : 'password'" v-model="formCadastro.senha" placeholder="Mínimo 6 caracteres" required minlength="6" class="form-control bg-light">
           </div>
+
           <!-- Checkbox Visualizar Senha (Cadastro) -->
-          <div class="mostrar-senha-box">
+          <div class="mostrar-senha-box mb-3">
             <input type="checkbox" id="toggle-senha-cadastro" v-model="mostrarSenhaCadastro">
             <label for="toggle-senha-cadastro">Visualizar senha</label>
           </div>
 
-          <button type="submit" class="btn btn-danger w-100 py-3 fw-bold rounded-3 shadow-sm" :disabled="carregandoAuth">
+          <!-- Checkbox Obrigatório de Termos e Responsabilidade com Espaçamento -->
+          <div class="form-check text-start mt-4 mb-3 p-3 bg-light rounded border">
+            <input 
+              class="form-check-input ms-0 me-2" 
+              type="checkbox" 
+              id="checkTermosConsultor" 
+              v-model="formCadastro.aceitouTermos" 
+              required
+            >
+            <label class="form-check-label small text-secondary" for="checkTermosConsultor">
+              Li e concordo com os 
+              <a href="#" @click.prevent="exibirModalTermosConsultor = true" class="text-danger fw-bold text-decoration-underline">
+                Termos de Uso e Responsabilidade do Consultor
+              </a>, assumindo integral responsabilidade pelas informações divulgadas, ofertas comerciais e pelo tratamento ético dos dados dos clientes (LGPD).
+            </label>
+          </div>
+
+          <button type="submit" class="btn btn-danger w-100 py-3 fw-bold rounded-3 shadow-sm mt-2" :disabled="carregandoAuth">
             {{ carregandoAuth ? 'Cadastrando...' : 'Criar Minha Conta Zappmotos' }}
           </button>
         </form>
@@ -334,6 +363,21 @@
               <input type="tel" v-model="formPerfil.whatsapp" required maxlength="11" class="form-control">
             </div>
 
+            <div class="mb-4">
+              <label class="form-label small fw-semibold text-secondary">Instagram Profissional</label>
+              
+              <!-- Alerta visível apenas se o vendedor ainda não preencheu o @ -->
+              <div v-if="!consultorLogado.instagram" class="alert alert-warning py-2 px-3 small d-flex align-items-center gap-2 mb-2 rounded-3">
+                <i class="bi bi-exclamation-triangle-fill text-warning fs-5"></i>
+                <span>Você ainda não adicionou seu Instagram! Preencha abaixo para exibir seu <strong>@</strong> na página dos seus clientes.</span>
+              </div>
+
+              <div class="input-group">
+                <span class="input-group-text bg-light text-muted">@</span>
+                <input type="text" v-model="formPerfil.instagram" placeholder="Ex: opedro_honda" class="form-control">
+              </div>
+            </div>
+
             <hr class="my-4">
             <h6 class="fw-bold text-dark mb-3">Alterar Senha</h6>
             <div class="mb-3">
@@ -349,6 +393,41 @@
       </main>
 
     </div>
+
+    <!-- Modal Jurídico: Termos de Uso e Responsabilidade do Consultor -->
+    <div v-if="exibirModalTermosConsultor" class="modal fade show d-block" tabindex="-1" style="background: rgba(0,0,0,0.65); z-index: 1055;">
+      <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+          <div class="modal-header bg-dark text-white border-0">
+            <h5 class="modal-title fw-bold fs-6">⚖️ Termos de Uso e Responsabilidade — Zappmotos</h5>
+            <button type="button" class="btn-close btn-close-white" @click="exibirModalTermosConsultor = false"></button>
+          </div>
+          <div class="modal-body small text-secondary lh-base" style="max-height: 60vh;">
+            <p class="fw-bold text-dark mb-1">1. Natureza da Ferramenta</p>
+            <p>O <strong>Zappmotos</strong> é uma plataforma tecnológica independente de apoio à captação de clientes e simulação estimada de planos de consórcio. O sistema não possui vínculo societário com fabricantes ou administradoras e atua exclusivamente como meio digital de organização comercial.</p>
+
+            <p class="fw-bold text-dark mb-1">2. Responsabilidade Integral pelo Uso</p>
+            <p>Ao criar sua conta, o Consultor declara-se integralmente responsável por todas as abordagens comerciais, negociações, promessas de contemplação, prazos e valores informados aos clientes através do seu link exclusivo ou atendimento via WhatsApp, isentando integralmente a plataforma Zappmotos e seus desenvolvedores de qualquer responsabilidade civil, comercial ou trabalhista decorrente de mau uso, propaganda enganosa ou descumprimento de normas internas da concessionária.</p>
+
+            <p class="fw-bold text-dark mb-1">3. Conformidade com a LGPD (Lei nº 13.709/2018)</p>
+            <p>Os dados pessoais captados (nome, telefone e cidade) destinam-se exclusivamente ao atendimento comercial solicitado pelo próprio cliente na simulação. É estritamente proibido comercializar, compartilhar com terceiros ou utilizar essa base para disparos de spam não autorizados.</p>
+
+            <p class="fw-bold text-dark mb-1">4. Uso da Marca e Conduta</p>
+            <p>O Consultor compromete-se a utilizar a ferramenta em estrita observância às diretrizes éticas e comerciais da concessionária à qual está vinculado, sob pena de bloqueio ou cancelamento imediato do acesso em caso de denúncias ou uso indevido.</p>
+          </div>
+          <div class="modal-footer border-0 bg-light">
+            <button 
+              type="button" 
+              class="btn btn-danger fw-bold w-100 rounded-3" 
+              @click="formCadastro.aceitouTermos = true; exibirModalTermosConsultor = false"
+            >
+              Li, Concordo e Assumo Responsabilidade
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
   </div>
 
   <!-- Vue 3 & Firebase Compat SDKs -->

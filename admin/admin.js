@@ -18,28 +18,40 @@ const { createApp } = Vue;
 createApp({
   data() {
     return {
-      abaAuth: 'login', // 'login' ou 'cadastro'
-      abaAtual: 'leads', // 'leads', 'link', 'perfil'
+      abaAuth: 'login',
+      abaAtual: 'leads',
       consultorLogado: null,
       carregandoAuth: false,
       carregando: false,
       salvandoPerfil: false,
       copiado: false,
+      exibirModalTermosConsultor: false,
 
-      //Estados para Visualizar Senha
       mostrarSenhaLogin: false,
       mostrarSenhaCadastro: false,
 
-      // Form Login
       formLogin: { cpf: '', senha: '' },
 
-      // Form Cadastro (Com Código de Acesso da Concessionária)
-      formCadastro: { nome: '', cpf: '', codigoAcesso: '', whatsapp: '', senha: '' },
+      // Form Cadastro com Instagram
+      formCadastro: { 
+        nome: '', 
+        cpf: '', 
+        codigoAcesso: '', 
+        whatsapp: '', 
+        instagram: '',
+        senha: '', 
+        aceitouTermos: false 
+      },
 
-      // Form Perfil (#2)
-      formPerfil: { nome: '', empresaHonda: '', whatsapp: '', novaSenha: '' },
+      // Form Perfil com Instagram
+      formPerfil: { 
+        nome: '', 
+        empresaHonda: '', 
+        whatsapp: '', 
+        instagram: '',
+        novaSenha: '' 
+      },
 
-      // Leads e Filtros
       leads: [],
       filtroBusca: '',
       filtroMoto: '',
@@ -98,18 +110,26 @@ createApp({
     limparCpf(cpf) {
       return (cpf || '').replace(/\D/g, '');
     },
+    // 🧹 Limpa o @ ou URL caso o vendedor cole o link inteiro do Instagram
+    limparInstagram(valor) {
+      if (!valor) return '';
+      return valor
+        .trim()
+        .replace(/^https?:\/\/(www\.)?instagram\.com\//i, '')
+        .replace(/^@/, '')
+        .replace(/\/.*$/, '')
+        .trim();
+    },
     formatarMoeda(valor) {
       if (typeof valor !== 'number') return '0,00';
       return valor.toFixed(2).replace('.', ',');
     },
-    
-    // 🚪 SAIR / DESLOGAR DO SISTEMA
     deslogar() {
       this.consultorLogado = null;
       localStorage.removeItem('zappmotos_consultor');
     },
 
-   // 🔑 CADASTRO DE CONSULTOR (Valida o Código de Acesso da Concessionária)
+    // 🔑 CADASTRO DE CONSULTOR
     async cadastrarConsultor() {
       const cpfLimpo = this.limparCpf(this.formCadastro.cpf);
       const codigoInput = (this.formCadastro.codigoAcesso || '').trim().toUpperCase();
@@ -118,10 +138,15 @@ createApp({
         alert("Por favor, digite um CPF válido com 11 dígitos.");
         return;
       }
+
+      if (!this.formCadastro.aceitouTermos) {
+        alert("Você precisa ler e aceitar os Termos de Uso e Responsabilidade para criar sua conta.");
+        return;
+      }
+
       this.carregandoAuth = true;
 
       try {
-        // 1. Valida se a concessionária existe através do código de acesso
         const queryLoja = await db.collection('concessionarias')
           .where('codigoAcesso', '==', codigoInput)
           .get();
@@ -134,9 +159,8 @@ createApp({
 
         const lojaDoc = queryLoja.docs[0];
         const dadosLoja = lojaDoc.data();
-        const concessionariaId = lojaDoc.id; // ID / CNPJ da concessionária
+        const concessionariaId = lojaDoc.id;
 
-        // 2. Verifica se o consultor já existe
         const docRef = db.collection('consultores').doc(cpfLimpo);
         const docSnap = await docRef.get();
 
@@ -146,7 +170,6 @@ createApp({
           return;
         }
 
-        // 3. Cria o slug seguro para a URL
         const nomeBruto = this.formCadastro.nome || 'consultor';
         const primeiroNome = nomeBruto.trim().split(' ')[0].toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
         const randomId = Math.random().toString(36).substring(2, 7);
@@ -156,11 +179,15 @@ createApp({
           cpf: cpfLimpo,
           slug: slugSeguro,
           nome: this.formCadastro.nome,
-          empresaHonda: dadosLoja.nomeLoja, // Puxa automaticamente o nome oficial da loja
-          concessionariaId: concessionariaId, // Vínculo corporativo antifraude
+          empresaHonda: dadosLoja.nomeLoja,
+          concessionariaId: concessionariaId,
           whatsapp: this.formCadastro.whatsapp.replace(/\D/g, ''),
+          instagram: this.limparInstagram(this.formCadastro.instagram),
           senha: this.formCadastro.senha,
           ativo: true,
+          aceitouTermosConsultor: true,
+          termoConsultorVersao: "v1.0 - 2026",
+          dataAceiteTermos: firebase.firestore.FieldValue.serverTimestamp(),
           dataCriacao: firebase.firestore.FieldValue.serverTimestamp()
         };
 
@@ -188,7 +215,6 @@ createApp({
 
         const consultor = docSnap.data();
         
-        // Verifica se o acesso está ativo pela concessionária
         if (consultor.ativo === false) {
           alert("Seu acesso foi temporariamente bloqueado pela concessionária. Entre em contato com o gestor.");
           return;
@@ -213,8 +239,8 @@ createApp({
       this.formPerfil.nome = consultor.nome;
       this.formPerfil.empresaHonda = consultor.empresaHonda || 'Carregando concessionária...';
       this.formPerfil.whatsapp = consultor.whatsapp;
+      this.formPerfil.instagram = consultor.instagram || '';
 
-      // 🔄 Busca o nome atualizado da concessionária direto no Firestore pelo concessionariaId
       if (consultor.concessionariaId) {
         try {
           const lojaDoc = await db.collection('concessionarias').doc(consultor.concessionariaId).get();
@@ -232,7 +258,6 @@ createApp({
       this.carregarLeads();
     },
 
-    // 📊 CARREGA TODOS OS LEADS DA COLEÇÃO COM FILTRO ROBUSTO (CPF, Slug e Loja)
     async carregarLeads() {
       if (!this.consultorLogado) return;
       this.carregando = true;
@@ -253,7 +278,6 @@ createApp({
           const bateLoja = concessionariaLogada && leadLoja === concessionariaLogada;
           const ehPadrao = leadRef === 'PADRAO' || leadRef === '';
 
-          // O consultor enxerga o lead se for direcionado para ele ou para a loja dele
           return bateCpf || bateSlug || bateLoja || ehPadrao;
         });
 
@@ -270,13 +294,15 @@ createApp({
       }
     },
 
-    // ✏️ ATUALIZAR PERFIL (Nome, WhatsApp e Senha)
+    // ✏️ ATUALIZAR PERFIL (Com Instagram)
     async atualizarPerfil() {
       this.salvandoPerfil = true;
       try {
+        const instaLimpo = this.limparInstagram(this.formPerfil.instagram);
         const updateData = {
           nome: this.formPerfil.nome,
-          whatsapp: this.formPerfil.whatsapp.replace(/\D/g, '')
+          whatsapp: this.formPerfil.whatsapp.replace(/\D/g, ''),
+          instagram: instaLimpo
         };
         if (this.formPerfil.novaSenha) {
           updateData.senha = this.formPerfil.novaSenha;
@@ -284,6 +310,7 @@ createApp({
 
         await db.collection('consultores').doc(this.consultorLogado.cpf).update(updateData);
         
+        this.formPerfil.instagram = instaLimpo;
         this.consultorLogado = { ...this.consultorLogado, ...updateData };
         localStorage.setItem('zappmotos_consultor', JSON.stringify(this.consultorLogado));
         alert("Dados atualizados com sucesso!");
@@ -295,7 +322,6 @@ createApp({
       }
     },
 
-    // 🔗 GERA O LINK PÚBLICO SEGURO DO VENDEDOR
     gerarMeuLinkPublico() {
       if (!this.consultorLogado) return '';
       

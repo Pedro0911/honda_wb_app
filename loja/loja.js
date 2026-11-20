@@ -1,4 +1,4 @@
-// --- CONFIGURAÇÃO DO FIREBASE (PAINEL CONCESSIONÁRIA) ---
+// --- CONFIGURAÇÃO DO FIREBASE (PAINEL MASTER ZAPP MOTOS) ---
 const firebaseConfig = {
   apiKey: "AIzaSyCxoCC0gy65F5Sc5AR4V6nkpAF5m54OTj0",
   authDomain: "honda-app-web.firebaseapp.com",
@@ -13,25 +13,37 @@ if (!firebase.apps.length) {
 }
 const db = firebase.firestore();
 
+// Credencial padrão de fallback do Master (pode ser sobrescrita no Firestore em config_master/acesso)
+const MASTER_FALLBACK = {
+  nome: "Pedro (Master)",
+  usuario: "admin@zappmotos.com",
+  senha: "change-me-master-2026"
+};
+
 const { createApp } = Vue;
 
 createApp({
   data() {
     return {
-      abaAuth: 'login',
-      abaAtual: 'planos',
-      lojaLogada: null,
+      abaAtual: 'assinantes',
+      masterLogado: null,
       carregandoAuth: false,
       mostrarSenha: false,
-      codigoCopiado: false,
-      importandoJson: false, // 👈 Estado para o botão de importação
+      importandoJson: false,
+      salvandoMarca: false,
 
-      // Listas IBGE
-      estados: [],
-      cidades: [],
+      formLoginMaster: {
+        identificador: '',
+        senha: ''
+      },
 
-      formLogin: { cnpj: '', senha: '' },
-      formCadastro: { nomeLoja: '', cnpj: '', uf: '', cidade: '', senha: '' },
+      // Marcas e Códigos (armazenados na coleção 'concessionarias' para manter compatibilidade)
+      marcas: [],
+      marcaSelecionadaId: '',
+      formMarca: {
+        marca: '',
+        codigoAcesso: ''
+      },
 
       // Gestão de Motos e Planos
       motos: [],
@@ -48,141 +60,349 @@ createApp({
         ]
       },
 
-      // Equipe de Vendedores
-      vendedores: []
+      // Assinantes / Consultores
+      assinantes: [],
+      carregandoAssinantes: false,
+      filtroCpfAssinante: '',
+      filtroMarcaAssinante: ''
     };
   },
-  methods: {
-    mascararCnpj(formName) {
-      let v = this[formName].cnpj.replace(/\D/g, '');
-      if (v.length > 14) v = v.slice(0, 14);
-      v = v.replace(/^(\d{2})(\d)/, '$1.$2');
-      v = v.replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3');
-      v = v.replace(/\.(\d{3})(\d)/, '.$1/$2');
-      v = v.replace(/(\d{4})(\d)/, '$1-$2');
-      this[formName].cnpj = v;
+  computed: {
+    marcaAtualObj() {
+      return this.marcas.find(m => m.id === this.marcaSelecionadaId) || null;
     },
+    marcasDisponiveisFiltro() {
+      const setMarcas = new Set();
+      this.marcas.forEach(m => {
+        if (m.marca) setMarcas.add(String(m.marca).trim().toUpperCase());
+      });
+      this.assinantes.forEach(u => {
+        const marcaCalc = this.obterMarcaUsuario(u);
+        if (marcaCalc && marcaCalc !== 'OUTRA') setMarcas.add(marcaCalc);
+      });
+      return Array.from(setMarcas).sort();
+    },
+    assinantesFiltrados() {
+      const busca = (this.filtroCpfAssinante || '').trim().toLowerCase();
+      const buscaNumeros = this.limparNumeros(busca);
+      const marcaFiltro = (this.filtroMarcaAssinante || '').trim().toUpperCase();
+
+      return this.assinantes.filter(u => {
+        const cpfLimpo = this.limparNumeros(u.cpf);
+        const nome = (u.nome || '').toLowerCase();
+        const zap = this.limparNumeros(u.whatsapp);
+
+        const bateBusca = !busca ||
+          (buscaNumeros && (cpfLimpo.includes(buscaNumeros) || zap.includes(buscaNumeros))) ||
+          nome.includes(busca);
+
+        const marcaUser = this.obterMarcaUsuario(u);
+        const bateMarca = !marcaFiltro || marcaUser === marcaFiltro;
+
+        return bateBusca && bateMarca;
+      });
+    },
+    totalUsuariosAtivos() {
+      return this.assinantes.filter(u => this.statusEfetivoUsuario(u).liberado).length;
+    },
+    totalUsuariosVip() {
+      return this.assinantes.filter(u => (u.tipoAcesso || 'ASSINANTE') === 'VIP').length;
+    },
+    totalAssinaturasVencidas() {
+      return this.assinantes.filter(u => this.statusEfetivoUsuario(u).vencido).length;
+    }
+  },
+  methods: {
     limparNumeros(str) {
       return (str || '').replace(/\D/g, '');
     },
-    formatarCnpj(cnpj) {
-      const v = this.limparNumeros(cnpj);
-      if (v.length !== 14) return cnpj;
-      return v.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5');
+    formatarCpf(cpf) {
+      const v = this.limparNumeros(cpf);
+      if (v.length !== 11) return cpf || '—';
+      return v.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
     },
     formatarMoeda(valor) {
       const num = parseFloat(valor);
       if (isNaN(num)) return '0,00';
       return num.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     },
-
-    // 📍 API DO IBGE (Estados e Cidades)
-    async carregarEstados() {
-      try {
-        const res = await fetch('https://servicodados.ibge.gov.br/api/v1/localidades/estados?orderBy=nome');
-        this.estados = await res.json();
-      } catch (e) {
-        console.error("Erro ao carregar estados do IBGE:", e);
-      }
-    },
-    async carregarCidades() {
-      this.formCadastro.cidade = '';
-      if (!this.formCadastro.uf) {
-        this.cidades = [];
-        return;
-      }
-      try {
-        const res = await fetch(`https://servicodados.ibge.gov.br/api/v1/localidades/estados/${this.formCadastro.uf}/municipios?orderBy=nome`);
-        this.cidades = await res.json();
-      } catch (e) {
-        console.error("Erro ao carregar cidades do IBGE:", e);
-      }
+    copiarTexto(texto) {
+      if (!texto) return;
+      navigator.clipboard.writeText(texto);
+      alert(`Código "${texto}" copiado!`);
     },
 
-    // 🏢 CADASTRO DA CONCESSIONÁRIA COM CÓDIGO DE SEGURANÇA ÚNICO
-    async cadastrarLoja() {
-      const cnpjLimpo = this.limparNumeros(this.formCadastro.cnpj);
-      if (cnpjLimpo.length !== 14) {
-        alert("Digite um CNPJ válido com 14 dígitos.");
-        return;
-      }
+    // 🔐 LOGIN EXCLUSIVO DO MASTER
+    async realizarLoginMaster() {
       this.carregandoAuth = true;
-
       try {
-        const docRef = db.collection('concessionarias').doc(cnpjLimpo);
-        const docSnap = await docRef.get();
+        const inputId = (this.formLoginMaster.identificador || '').trim().toLowerCase();
+        const inputSenha = this.formLoginMaster.senha || '';
 
-        if (docSnap.exists) {
-          alert("Este CNPJ já está cadastrado. Faça login!");
-          this.abaAuth = 'login';
-          return;
+        let credencial = MASTER_FALLBACK;
+        const docConfig = await db.collection('config_master').doc('acesso').get();
+        if (docConfig.exists) {
+          credencial = { ...MASTER_FALLBACK, ...docConfig.data() };
         }
 
-        // Gera código único de segurança (Ex: HONDA-4829)
-        const sufixo = Math.random().toString(36).substring(2, 6).toUpperCase();
-        const codigoGerado = `HONDA-${sufixo}`;
+        const usuarioValido = String(credencial.usuario || '').trim().toLowerCase();
+        const senhaValida = String(credencial.senha || '');
 
-        const dadosLoja = {
-          cnpj: cnpjLimpo,
-          nomeLoja: this.formCadastro.nomeLoja.trim(),
-          cidade: this.formCadastro.cidade.trim(),
-          uf: this.formCadastro.uf,
-          senha: this.formCadastro.senha,
-          codigoAcesso: codigoGerado,
+        if (inputId === usuarioValido && inputSenha === senhaValida) {
+          const sessaoMaster = {
+            nome: credencial.nome || 'Administrador Master',
+            usuario: usuarioValido,
+            logadoEm: new Date().toISOString()
+          };
+          this.entrarSessaoMaster(sessaoMaster);
+        } else {
+          alert("Credenciais Master inválidas.");
+        }
+      } catch (e) {
+        console.error("Erro no login master:", e);
+        alert("Erro ao validar acesso master.");
+      } finally {
+        this.carregandoAuth = false;
+      }
+    },
+
+    entrarSessaoMaster(sessao) {
+      this.masterLogado = sessao;
+      localStorage.setItem('zappmotos_master', JSON.stringify(sessao));
+      this.carregarMarcas();
+      this.carregarAssinantes();
+    },
+
+    deslogar() {
+      this.masterLogado = null;
+      localStorage.removeItem('zappmotos_master');
+    },
+
+    // 🏷️ MARCAS & CÓDIGOS DE ACESSO (MARCA ÚNICA)
+    gerarCodigoMarca(marcaNome) {
+      const prefixo = (marcaNome || 'MARCA')
+        .trim()
+        .toUpperCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/[^A-Z0-9]/g, '')
+        .slice(0, 10) || 'MARCA';
+      const sufixo = Math.random().toString(36).substring(2, 6).toUpperCase();
+      return `${prefixo}-${sufixo}`;
+    },
+
+    async carregarMarcas() {
+      try {
+        const snap = await db.collection('concessionarias').get();
+        this.marcas = snap.docs.map(doc => {
+          const data = doc.data();
+          const marcaDerivada = data.marca || (data.codigoAcesso ? String(data.codigoAcesso).split('-')[0] : 'HONDA');
+          return {
+            id: doc.id,
+            ...data,
+            marca: String(marcaDerivada || 'HONDA').trim().toUpperCase()
+          };
+        });
+
+        if (!this.marcaSelecionadaId && this.marcas.length > 0) {
+          this.marcaSelecionadaId = this.marcas[0].id;
+        }
+        if (this.marcaSelecionadaId) {
+          this.carregarMotos();
+        }
+      } catch (e) {
+        console.error("Erro ao carregar marcas:", e);
+      }
+    },
+
+    async criarMarcaCodigo() {
+      const marcaLimpa = (this.formMarca.marca || '')
+        .trim()
+        .toUpperCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/[^A-Z0-9]/g, '');
+
+      const codigoCustom = (this.formMarca.codigoAcesso || '').trim().toUpperCase();
+
+      if (!marcaLimpa) {
+        alert("Digite o nome da marca (ex: HONDA, YAMAHA).");
+        return;
+      }
+
+      const marcaJaExiste = this.marcas.some(m => m.marca === marcaLimpa);
+      if (marcaJaExiste) {
+        alert(`A marca "${marcaLimpa}" já está cadastrada. Use a tabela ao lado para gerenciar os planos ou gerar um novo código.`);
+        return;
+      }
+
+      this.salvandoMarca = true;
+      try {
+        const codigoFinal = codigoCustom || this.gerarCodigoMarca(marcaLimpa);
+        const docId = marcaLimpa;
+
+        const payload = {
+          cnpj: docId,
+          marca: marcaLimpa,
+          nomeLoja: marcaLimpa,
+          codigoAcesso: codigoFinal,
+          ativo: true,
+          atualizadoEm: firebase.firestore.FieldValue.serverTimestamp(),
           dataCriacao: firebase.firestore.FieldValue.serverTimestamp()
         };
 
-        await docRef.set(dadosLoja);
-        this.entrarSessao(dadosLoja);
+        await db.collection('concessionarias').doc(docId).set(payload, { merge: true });
+        this.marcaSelecionadaId = docId;
+        this.formMarca.marca = '';
+        this.formMarca.codigoAcesso = '';
+        await this.carregarMarcas();
+        alert(`Marca ${marcaLimpa} criada com o código ${codigoFinal}!`);
       } catch (e) {
-        console.error("Erro ao cadastrar loja:", e);
-        alert("Erro ao cadastrar concessionária: " + e.message);
+        console.error("Erro ao salvar marca/código:", e);
+        alert("Erro ao salvar marca: " + e.message);
       } finally {
-        this.carregandoAuth = false;
+        this.salvandoMarca = false;
       }
     },
 
-    // 🔑 LOGIN DA CONCESSIONÁRIA
-    async realizarLogin() {
-      const cnpjLimpo = this.limparNumeros(this.formLogin.cnpj);
-      this.carregandoAuth = true;
+    async regenerarCodigoMarca(marcaObj) {
+      const novoCodigo = this.gerarCodigoMarca(marcaObj.marca);
+      if (!confirm(`Gerar novo código "${novoCodigo}" para a marca ${marcaObj.marca}?`)) return;
 
-      try {
-        const docSnap = await db.collection('concessionarias').doc(cnpjLimpo).get();
-        if (!docSnap.exists) {
-          alert("CNPJ não encontrado.");
-          return;
-        }
-
-        const loja = docSnap.data();
-        if (loja.senha !== this.formLogin.senha) {
-          alert("Senha incorreta.");
-          return;
-        }
-
-        this.entrarSessao(loja);
-      } catch (e) {
-        console.error("Erro no login da loja:", e);
-        alert("Erro ao acessar painel.");
-      } finally {
-        this.carregandoAuth = false;
-      }
+      await db.collection('concessionarias').doc(marcaObj.id).update({
+        codigoAcesso: novoCodigo,
+        atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      await this.carregarMarcas();
     },
 
-    entrarSessao(loja) {
-      this.lojaLogada = loja;
-      localStorage.setItem('zappmotos_loja', JSON.stringify(loja));
+    selecionarMarcaParaPlanos(id) {
+      this.marcaSelecionadaId = id;
+      this.abaAtual = 'planos';
       this.carregarMotos();
-      this.carregarVendedores();
     },
-    deslogar() {
-      this.lojaLogada = null;
-      localStorage.removeItem('zappmotos_loja');
+
+    contarVendedoresPorMarca(marcaObj) {
+      if (!marcaObj) return 0;
+      const marcaAlvo = String(marcaObj.marca || '').trim().toUpperCase();
+      return this.assinantes.filter(u => this.obterMarcaUsuario(u) === marcaAlvo).length;
     },
-    copiarCodigo() {
-      navigator.clipboard.writeText(this.lojaLogada.codigoAcesso);
-      this.codigoCopiado = true;
-      setTimeout(() => this.codigoCopiado = false, 2500);
+
+    // 👥 ASSINANTES & CONTROLE DE ACESSO (MANUAL + AUTOMÁTICO POR VALIDADE)
+    obterMarcaUsuario(u) {
+      if (u.marca) return String(u.marca).trim().toUpperCase();
+      if (u.codigoAcesso && String(u.codigoAcesso).includes('-')) {
+        return String(u.codigoAcesso).split('-')[0].trim().toUpperCase();
+      }
+      const lojaVinculada = this.marcas.find(m => m.id === u.concessionariaId || m.codigoAcesso === u.codigoAcesso);
+      if (lojaVinculada && lojaVinculada.marca) {
+        return String(lojaVinculada.marca).trim().toUpperCase();
+      }
+      if (u.empresaHonda) return 'HONDA';
+      return 'OUTRA';
+    },
+
+    parseDataValidade(valor) {
+      if (!valor) return null;
+      if (valor.toDate) return valor.toDate();
+      const d = new Date(valor);
+      return isNaN(d.getTime()) ? null : d;
+    },
+
+    formatarDataInput(valor) {
+      const d = this.parseDataValidade(valor);
+      if (!d) return '';
+      return d.toISOString().slice(0, 10);
+    },
+
+    statusEfetivoUsuario(u) {
+      if (u.ativo === false) {
+        return { texto: 'Bloqueado', classe: 'bg-danger', liberado: false, vencido: false };
+      }
+
+      const tipo = u.tipoAcesso || 'ASSINANTE';
+      if (tipo === 'VIP') {
+        return { texto: 'VIP / Gratuito', classe: 'bg-primary', liberado: true, vencido: false };
+      }
+
+      const dataValidade = this.parseDataValidade(u.assinaturaValidaAte);
+      if (dataValidade) {
+        const fimDoDia = new Date(dataValidade.getFullYear(), dataValidade.getMonth(), dataValidade.getDate(), 23, 59, 59);
+        if (new Date() > fimDoDia) {
+          return { texto: 'Vencida', classe: 'bg-warning text-dark', liberado: false, vencido: true };
+        }
+      }
+
+      return { texto: 'Ativo', classe: 'bg-success', liberado: true, vencido: false };
+    },
+
+    async carregarAssinantes() {
+      this.carregandoAssinantes = true;
+      try {
+        const snap = await db.collection('consultores').get();
+        this.assinantes = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      } catch (e) {
+        console.error("Erro ao carregar assinantes:", e);
+      } finally {
+        this.carregandoAssinantes = false;
+      }
+    },
+
+    async alterarTipoAcesso(usuario, novoTipo) {
+      try {
+        const updatePayload = { tipoAcesso: novoTipo };
+        if (novoTipo === 'VIP') {
+          updatePayload.ativo = true;
+        }
+        await db.collection('consultores').doc(usuario.id).update(updatePayload);
+        usuario.tipoAcesso = novoTipo;
+        if (novoTipo === 'VIP') usuario.ativo = true;
+      } catch (e) {
+        console.error("Erro ao atualizar tipo de acesso:", e);
+        alert("Erro ao atualizar tipo de acesso.");
+      }
+    },
+
+    async atualizarValidadeAssinatura(usuario, novaDataStr) {
+      try {
+        const payload = {
+          tipoAcesso: 'ASSINANTE',
+          assinaturaValidaAte: novaDataStr ? new Date(`${novaDataStr}T12:00:00`) : null
+        };
+        await db.collection('consultores').doc(usuario.id).update(payload);
+        usuario.tipoAcesso = 'ASSINANTE';
+        usuario.assinaturaValidaAte = payload.assinaturaValidaAte;
+      } catch (e) {
+        console.error("Erro ao atualizar validade:", e);
+        alert("Erro ao atualizar validade.");
+      }
+    },
+
+    async renovar30Dias(usuario) {
+      try {
+        const baseData = this.parseDataValidade(usuario.assinaturaValidaAte);
+        const inicio = baseData && baseData > new Date() ? baseData : new Date();
+        const novaData = new Date(inicio.getTime() + 30 * 24 * 60 * 60 * 1000);
+
+        await db.collection('consultores').doc(usuario.id).update({
+          tipoAcesso: 'ASSINANTE',
+          ativo: true,
+          assinaturaValidaAte: novaData
+        });
+
+        usuario.tipoAcesso = 'ASSINANTE';
+        usuario.ativo = true;
+        usuario.assinaturaValidaAte = novaData;
+      } catch (e) {
+        console.error("Erro ao renovar 30 dias:", e);
+        alert("Erro ao renovar assinatura.");
+      }
+    },
+
+    async alternarStatusUsuario(usuario) {
+      const novoStatus = usuario.ativo === false ? true : false;
+      await db.collection('consultores').doc(usuario.id).update({ ativo: novoStatus });
+      usuario.ativo = novoStatus;
     },
 
     // 🏍️ GESTÃO DE MOTOS E PLANOS NO FIRESTORE
@@ -193,6 +413,10 @@ createApp({
       this.formMoto.planos.splice(index, 1);
     },
     async salvarMoto() {
+      if (!this.marcaAtualObj) {
+        alert("Selecione ou cadastre uma marca antes de salvar.");
+        return;
+      }
       this.salvandoMoto = true;
       try {
         const planosOrdenados = [...this.formMoto.planos]
@@ -200,8 +424,9 @@ createApp({
           .sort((a, b) => b.meses - a.meses);
 
         const payload = {
-          concessionariaId: this.lojaLogada.cnpj,
-          codigoAcesso: this.lojaLogada.codigoAcesso,
+          concessionariaId: this.marcaAtualObj.id,
+          codigoAcesso: this.marcaAtualObj.codigoAcesso,
+          marca: this.marcaAtualObj.marca,
           modelo: this.formMoto.modelo.trim().toUpperCase(),
           valorCredito: Number(this.formMoto.valorCredito),
           imagem: this.formMoto.imagem.trim(),
@@ -258,11 +483,11 @@ createApp({
       await this.carregarMotos();
     },
     async carregarMotos() {
-      if (!this.lojaLogada) return;
+      if (!this.marcaAtualObj) return;
       this.carregandoMotos = true;
       try {
         const snap = await db.collection('planos_consorcio')
-          .where('concessionariaId', '==', this.lojaLogada.cnpj)
+          .where('concessionariaId', '==', this.marcaAtualObj.id)
           .get();
         this.motos = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       } catch (e) {
@@ -272,10 +497,10 @@ createApp({
       }
     },
 
-   // 📥 IMPORTAR MOTOS E PLANOS DIRETAMENTE DO motos.json PARA O FIRESTORE
+    // 📥 IMPORTAR MOTOS E PLANOS DIRETAMENTE DO motos.json PARA O FIRESTORE
     async importarMotosJson() {
-      if (!this.lojaLogada) return;
-      if (!confirm("Deseja importar todos os modelos e planos do arquivo motos.json para o painel desta concessionária?")) return;
+      if (!this.marcaAtualObj) return;
+      if (!confirm(`Deseja importar os modelos do motos.json para a marca ${this.marcaAtualObj.marca}?`)) return;
       
       this.importandoJson = true;
       try {
@@ -283,26 +508,24 @@ createApp({
         if (!response.ok) throw new Error("Não foi possível encontrar o arquivo motos.json na raiz do projeto.");
         const motosJson = await response.json();
 
-        // Identifica a lista correta dentro de "catalogo_honda" conforme o seu JSON
         const lista = Array.isArray(motosJson) 
           ? motosJson 
           : (motosJson.catalogo_honda || motosJson.motos || Object.values(motosJson).find(val => Array.isArray(val)) || []);
 
         let importadas = 0;
         for (const moto of lista) {
-          // Mapeia os planos convertendo 'parcelas' para 'meses' e 'valor' para 'parcela'[cite: 9]
           const planosMapeados = (moto.planos || []).map(p => ({
             meses: Number(p.parcelas || p.meses || 0),
             parcela: Number(p.valor || p.parcela || 0)
           })).sort((a, b) => b.meses - a.meses);
 
-          // Estima o valor de crédito base caso o campo não exista diretamente no objeto principal
           const maiorPlano = planosMapeados[0];
           const creditoEstimado = maiorPlano ? (maiorPlano.parcela * maiorPlano.meses * 0.65) : 15000;
 
           const payload = {
-            concessionariaId: this.lojaLogada.cnpj,
-            codigoAcesso: this.lojaLogada.codigoAcesso,
+            concessionariaId: this.marcaAtualObj.id,
+            codigoAcesso: this.marcaAtualObj.codigoAcesso,
+            marca: this.marcaAtualObj.marca,
             modelo: (moto.modelo || moto.nome || '').trim().toUpperCase(),
             valorCredito: Number(moto.valorCredito || moto.valor || Math.round(creditoEstimado)),
             imagem: (moto.imagem || 'img/').trim(),
@@ -325,33 +548,13 @@ createApp({
       } finally {
         this.importandoJson = false;
       }
-    },
-
-    // 👥 GESTÃO DA EQUIPE DE VENDEDORES
-    async carregarVendedores() {
-      if (!this.lojaLogada) return;
-      try {
-        const snap = await db.collection('consultores')
-          .where('concessionariaId', '==', this.lojaLogada.cnpj)
-          .get();
-        this.vendedores = snap.docs.map(doc => doc.data());
-      } catch (e) {
-        console.error("Erro ao carregar equipe:", e);
-      }
-    },
-    async alternarStatusVendedor(vendedor) {
-      const novoStatus = vendedor.ativo === false ? true : false;
-      await db.collection('consultores').doc(vendedor.cpf).update({ ativo: novoStatus });
-      vendedor.ativo = novoStatus;
     }
   },
   mounted() {
-    this.carregarEstados();
-
-    const lojaSalva = localStorage.getItem('zappmotos_loja');
-    if (lojaSalva) {
+    const sessaoSalva = localStorage.getItem('zappmotos_master');
+    if (sessaoSalva) {
       try {
-        this.entrarSessao(JSON.parse(lojaSalva));
+        this.entrarSessaoMaster(JSON.parse(sessaoSalva));
       } catch (e) {}
     }
   }

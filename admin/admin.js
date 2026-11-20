@@ -24,6 +24,7 @@ createApp({
       carregandoAuth: false,
       carregando: false,
       salvandoPerfil: false,
+      excluindoLeadId: null,
       copiado: false,
       exibirModalTermosConsultor: false,
 
@@ -289,6 +290,27 @@ createApp({
         alert("Erro ao carregar leads. Veja o console (F12).");
       } finally {
         this.carregando = false;
+      }
+    },
+
+    // 🗑️ EXCLUIR LEAD DO FIRESTORE E DA TABELA
+    async excluirLead(lead) {
+      if (!lead || !lead.id) return;
+
+      const nomeLead = lead.nome || 'este lead';
+      const confirmou = confirm(`Tem certeza que deseja excluir "${nomeLead}"? Essa ação não pode ser desfeita.`);
+      if (!confirmou) return;
+
+      this.excluindoLeadId = lead.id;
+
+      try {
+        await db.collection('leads').doc(lead.id).delete();
+        this.leads = this.leads.filter(item => item.id !== lead.id);
+      } catch (e) {
+        console.error("Erro ao excluir lead:", e);
+        alert("Não foi possível excluir o lead. Tente novamente.");
+      } finally {
+        this.excluindoLeadId = null;
       }
     },
 

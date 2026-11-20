@@ -247,7 +247,8 @@
             <table class="table table-hover align-middle mb-0">
               <thead class="table-light">
                 <tr class="small text-uppercase text-secondary">
-                  <th class="ps-4">Data / Hora</th>
+                  <th class="ps-4" style="width: 56px;">Excluir</th>
+                  <th>Data / Hora</th>
                   <th>Nome</th>
                   <th>Contato</th>
                   <th>Cidade / UF</th>
@@ -260,18 +261,30 @@
               </thead>
               <tbody>
                 <tr v-if="carregando">
-                  <td colspan="9" class="text-center py-5 text-muted">
+                  <td colspan="10" class="text-center py-5 text-muted">
                     <div class="spinner-border text-danger" role="status"></div>
                     <p class="small mt-2">Carregando seus leads exclusivos...</p>
                   </td>
                 </tr>
                 <tr v-else-if="leadsFiltrados.length === 0">
-                  <td colspan="9" class="text-center py-5 text-muted">
+                  <td colspan="10" class="text-center py-5 text-muted">
                     Nenhum lead encontrado para este filtro.
                   </td>
                 </tr>
                 <tr v-for="lead in leadsFiltrados" :key="lead.id">
-                  <td class="ps-4 small text-muted">{{ formatarData(lead.dataCriacao) }}</td>
+                  <td class="ps-4">
+                    <button 
+                      type="button" 
+                      @click="excluirLead(lead)" 
+                      class="btn btn-outline-danger btn-sm rounded-circle" 
+                      title="Excluir lead"
+                      :disabled="excluindoLeadId === lead.id"
+                    >
+                      <span v-if="excluindoLeadId === lead.id" class="spinner-border spinner-border-sm" role="status"></span>
+                      <i v-else class="bi bi-trash"></i>
+                    </button>
+                  </td>
+                  <td class="small text-muted">{{ formatarData(lead.dataCriacao) }}</td>
                   <td class="fw-bold text-dark">{{ lead.nome }}</td>
                   <td class="font-monospace small">{{ formatarTelefone(lead.whatsapp) }}</td>
                   <td class="small">{{ lead.cidade }} - <strong>{{ lead.uf }}</strong></td>

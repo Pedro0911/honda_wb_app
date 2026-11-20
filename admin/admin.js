@@ -258,27 +258,25 @@ createApp({
       this.carregarLeads();
     },
 
+    // 📊 CARREGA APENAS OS LEADS DO CONSULTOR LOGADO
     async carregarLeads() {
       if (!this.consultorLogado) return;
       this.carregando = true;
       try {
-        const cpfLogado = (this.consultorLogado.cpf || '').replace(/\D/g, '');
-        const slugLogado = (this.consultorLogado.slug || '').trim();
-        const concessionariaLogada = (this.consultorLogado.concessionariaId || '').trim();
+        const cpfLogado = String(this.consultorLogado.cpf || '').replace(/\D/g, '').trim();
+        const slugLogado = String(this.consultorLogado.slug || '').trim();
 
         const snapshot = await db.collection('leads').get();
         const todosOsLeads = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
         this.leads = todosOsLeads.filter(l => {
           const leadRef = String(l.consultorCpf || '').trim();
-          const leadLoja = String(l.concessionariaId || '').trim();
-          
-          const bateCpf = leadRef === cpfLogado;
-          const bateSlug = leadRef === slugLogado;
-          const bateLoja = concessionariaLogada && leadLoja === concessionariaLogada;
-          const ehPadrao = leadRef === 'PADRAO' || leadRef === '';
+          const leadSlug = String(l.consultorSlug || '').trim();
 
-          return bateCpf || bateSlug || bateLoja || ehPadrao;
+          const bateCpf = cpfLogado && leadRef === cpfLogado;
+          const bateSlug = (slugLogado && leadRef === slugLogado) || (slugLogado && leadSlug === slugLogado);
+
+          return bateCpf || bateSlug;
         });
 
         this.leads.sort((a, b) => {

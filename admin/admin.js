@@ -13,6 +13,9 @@ if (!firebase.apps.length) {
 }
 const db = firebase.firestore();
 
+// Número de WhatsApp do suporte/renovação (DDI + DDD + Número)
+const WHATSAPP_SUPORTE_ZAPPMOTOS = "5582999679667";
+
 const { createApp } = Vue;
 
 createApp({
@@ -27,27 +30,38 @@ createApp({
       excluindoLeadId: null,
       copiado: false,
       exibirModalTermosConsultor: false,
+      avisoAcesso: null,
 
       mostrarSenhaLogin: false,
       mostrarSenhaCadastro: false,
 
+      // Listas IBGE
+      estados: [],
+      cidades: [],
+      cidadesPerfil: [],
+
       formLogin: { cpf: '', senha: '' },
 
-      // Form Cadastro com Instagram
+      // Form Cadastro com Código da Marca + Loja + UF/Cidade
       formCadastro: { 
         nome: '', 
         cpf: '', 
-        codigoAcesso: '', 
+        codigoAcesso: '',
+        nomeLoja: '',
+        uf: '',
+        cidade: '',
         whatsapp: '', 
         instagram: '',
         senha: '', 
         aceitouTermos: false 
       },
 
-      // Form Perfil com Instagram
+      // Form Perfil
       formPerfil: { 
         nome: '', 
-        empresaHonda: '', 
+        empresaHonda: '',
+        uf: '',
+        cidade: '',
         whatsapp: '', 
         instagram: '',
         novaSenha: '' 
@@ -94,6 +108,12 @@ createApp({
     },
     listaMotosUnicas() {
       return Array.from(new Set(this.leads.map(l => l.motoInteresse).filter(Boolean)));
+    },
+    textoValidadeAssinatura() {
+      if (!this.consultorLogado || !this.consultorLogado.assinaturaValidaAte) return '';
+      const d = this.parseDataValidade(this.consultorLogado.assinaturaValidaAte);
+      if (!d) return '';
+      return d.toLocaleDateString('pt-BR');
     }
   },
   methods: {
@@ -111,7 +131,6 @@ createApp({
     limparCpf(cpf) {
       return (cpf || '').replace(/\D/g, '');
     },
-    // 🧹 Limpa o @ ou URL caso o vendedor cole o link inteiro do Instagram
     limparInstagram(valor) {
       if (!valor) return '';
       return valor
@@ -130,7 +149,93 @@ createApp({
       localStorage.removeItem('zappmotos_consultor');
     },
 
-    // 🔑 CADASTRO DE CONSULTOR
+    // 📍 API DO IBGE (Estados e Cidades)
+    async carregarEstados() {
+      try {
+        const res = await fetch('https://servicodados.ibge.gov.br/api/v1/localidades/estados?orderBy=nome');
+        this.estados = await res.json();
+      } catch (e) {
+        console.error("Erro ao carregar estados do IBGE:", e);
+      }
+    },
+    async carregarCidades(targetForm = 'formCadastro', manterCidadeAtual = false) {
+      const uf = this[targetForm].uf;
+      if (!manterCidadeAtual) {
+        this[targetForm].cidade = '';
+      }
+      if (!uf) {
+        if (targetForm === 'formPerfil') this.cidadesPerfil = [];
+        else this.cidades = [];
+        return;
+      }
+      try {
+        const res = await fetch(`https://servicodados.ibge.gov.br/api/v1/localidades/estados/${uf}/municipios?orderBy=nome`);
+        const lista = await res.json();
+        if (targetForm === 'formPerfil') {
+          this.cidadesPerfil = lista;
+        } else {
+          this.cidades = lista;
+        }
+      } catch (e) {
+        console.error("Erro ao carregar cidades do IBGE:", e);
+      }
+    },
+
+    // 🛡️ VERIFICAÇÃO AUTOMÁTICA DE ASSINATURA E ACESSO
+    parseDataValidade(valor) {
+      if (!valor) return null;
+      if (valor.toDate) return valor.toDate();
+      if (valor.seconds) return new Date(valor.seconds * 1000);
+      const d = new Date(valor);
+      return isNaN(d.getTime()) ? null : d;
+    },
+
+    async verificarPermissaoAssinatura(consultor) {
+      if (consultor.ativo === false) {
+        const msg = encodeURIComponent(`Olá! Meu acesso ao Zappmotos (CPF ${consultor.cpf}) está bloqueado. Gostaria de regularizar.`);
+        this.avisoAcesso = {
+          tipo: 'bloqueada',
+          titulo: 'Acesso Temporariamente Bloqueado',
+          mensagem: 'Sua conta está bloqueada no sistema. Entre em contato com o suporte para liberar seu acesso.',
+          linkSuporte: `https://wa.me/${WHATSAPP_SUPORTE_ZAPPMOTOS}?text=${msg}`
+        };
+        return false;
+      }
+
+      const tipo = consultor.tipoAcesso || 'ASSINANTE';
+      if (tipo === 'VIP') {
+        this.avisoAcesso = null;
+        return true;
+      }
+
+      const dataValidade = this.parseDataValidade(consultor.assinaturaValidaAte);
+      if (dataValidade) {
+        const fimDoDia = new Date(dataValidade.getFullYear(), dataValidade.getMonth(), dataValidade.getDate(), 23, 59, 59);
+        if (new Date() > fimDoDia) {
+          // Sincroniza bloqueio automático no Firestore
+          try {
+            await db.collection('consultores').doc(consultor.cpf).update({ ativo: false });
+          } catch (e) {
+            console.error("Erro ao atualizar status vencido:", e);
+          }
+
+          const dataFormatada = dataValidade.toLocaleDateString('pt-BR');
+          const msg = encodeURIComponent(`Olá! Minha assinatura do Zappmotos (CPF ${consultor.cpf}) venceu em ${dataFormatada}. Quero renovar meu acesso!`);
+          this.avisoAcesso = {
+            tipo: 'vencida',
+            titulo: `Assinatura Vencida em ${dataFormatada}`,
+            mensagem: 'Seu período de acesso expirou. Renove sua assinatura agora para continuar captando e atendendo seus leads.',
+            linkSuporte: `https://wa.me/${WHATSAPP_SUPORTE_ZAPPMOTOS}?text=${msg}`
+          };
+          return false;
+        }
+      }
+
+      this.avisoAcesso = null;
+      return true;
+    },
+
+    // 🔑 CADASTRO DE CONSULTOR (CÓDIGO DA MARCA + LOJA LIVRE + 7 DIAS GRÁTIS)
     async cadastrarConsultor() {
       const cpfLimpo = this.limparCpf(this.formCadastro.cpf);
       const codigoInput = (this.formCadastro.codigoAcesso || '').trim().toUpperCase();
@@ -148,19 +253,20 @@ createApp({
       this.carregandoAuth = true;
 
       try {
-        const queryLoja = await db.collection('concessionarias')
+        const queryMarca = await db.collection('concessionarias')
           .where('codigoAcesso', '==', codigoInput)
           .get();
 
-        if (queryLoja.empty) {
-          alert("Código de Acesso da Concessionária inválido ou não encontrado. Verifique com o gestor da loja.");
+        if (queryMarca.empty) {
+          alert("Código da Marca inválido ou não encontrado. Verifique o código e tente novamente.");
           this.carregandoAuth = false;
           return;
         }
 
-        const lojaDoc = queryLoja.docs[0];
-        const dadosLoja = lojaDoc.data();
-        const concessionariaId = lojaDoc.id;
+        const marcaDoc = queryMarca.docs[0];
+        const dadosMarca = marcaDoc.data();
+        const marcaId = marcaDoc.id;
+        const marcaNome = (dadosMarca.marca || codigoInput.split('-')[0] || 'HONDA').trim().toUpperCase();
 
         const docRef = db.collection('consultores').doc(cpfLimpo);
         const docSnap = await docRef.get();
@@ -176,15 +282,24 @@ createApp({
         const randomId = Math.random().toString(36).substring(2, 7);
         const slugSeguro = `${primeiroNome}-${randomId}`;
 
+        // Concede 7 dias de teste gratuito a partir do cadastro
+        const validadeTeste = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+
         const dadosConsultor = {
           cpf: cpfLimpo,
           slug: slugSeguro,
-          nome: this.formCadastro.nome,
-          empresaHonda: dadosLoja.nomeLoja,
-          concessionariaId: concessionariaId,
+          nome: this.formCadastro.nome.trim(),
+          marca: marcaNome,
+          codigoAcesso: codigoInput,
+          empresaHonda: this.formCadastro.nomeLoja.trim(),
+          uf: this.formCadastro.uf,
+          cidade: this.formCadastro.cidade,
+          concessionariaId: marcaId,
           whatsapp: this.formCadastro.whatsapp.replace(/\D/g, ''),
           instagram: this.limparInstagram(this.formCadastro.instagram),
           senha: this.formCadastro.senha,
+          tipoAcesso: 'ASSINANTE',
+          assinaturaValidaAte: validadeTeste,
           ativo: true,
           aceitouTermosConsultor: true,
           termoConsultorVersao: "v1.0 - 2026",
@@ -193,7 +308,7 @@ createApp({
         };
 
         await docRef.set(dadosConsultor);
-        this.entrarSessao(dadosConsultor);
+        await this.entrarSessao(dadosConsultor);
       } catch (e) {
         console.error("Erro ao cadastrar consultor:", e);
         alert("Erro ao realizar cadastro: " + e.message);
@@ -206,6 +321,7 @@ createApp({
     async realizarLogin() {
       const cpfLimpo = this.limparCpf(this.formLogin.cpf);
       this.carregandoAuth = true;
+      this.avisoAcesso = null;
 
       try {
         const docSnap = await db.collection('consultores').doc(cpfLimpo).get();
@@ -215,18 +331,18 @@ createApp({
         }
 
         const consultor = docSnap.data();
-        
-        if (consultor.ativo === false) {
-          alert("Seu acesso foi temporariamente bloqueado pela concessionária. Entre em contato com o gestor.");
-          return;
-        }
 
         if (consultor.senha !== this.formLogin.senha) {
           alert("Senha incorreta.");
           return;
         }
 
-        this.entrarSessao(consultor);
+        const permitido = await this.verificarPermissaoAssinatura(consultor);
+        if (!permitido) {
+          return;
+        }
+
+        await this.entrarSessao(consultor);
       } catch (e) {
         console.error("Erro no login:", e);
         alert("Erro ao efetuar login.");
@@ -237,22 +353,15 @@ createApp({
 
     async entrarSessao(consultor) {
       this.consultorLogado = consultor;
-      this.formPerfil.nome = consultor.nome;
-      this.formPerfil.empresaHonda = consultor.empresaHonda || 'Carregando concessionária...';
-      this.formPerfil.whatsapp = consultor.whatsapp;
+      this.formPerfil.nome = consultor.nome || '';
+      this.formPerfil.empresaHonda = consultor.empresaHonda || '';
+      this.formPerfil.uf = consultor.uf || '';
+      this.formPerfil.cidade = consultor.cidade || '';
+      this.formPerfil.whatsapp = consultor.whatsapp || '';
       this.formPerfil.instagram = consultor.instagram || '';
 
-      if (consultor.concessionariaId) {
-        try {
-          const lojaDoc = await db.collection('concessionarias').doc(consultor.concessionariaId).get();
-          if (lojaDoc.exists) {
-            const nomeOficialLoja = lojaDoc.data().nomeLoja;
-            this.consultorLogado.empresaHonda = nomeOficialLoja;
-            this.formPerfil.empresaHonda = nomeOficialLoja;
-          }
-        } catch (e) {
-          console.error("Erro ao sincronizar nome da concessionária:", e);
-        }
+      if (consultor.uf) {
+        this.carregarCidades('formPerfil', true);
       }
 
       localStorage.setItem('zappmotos_consultor', JSON.stringify(this.consultorLogado));
@@ -314,13 +423,16 @@ createApp({
       }
     },
 
-    // ✏️ ATUALIZAR PERFIL (Com Instagram)
+    // ✏️ ATUALIZAR PERFIL
     async atualizarPerfil() {
       this.salvandoPerfil = true;
       try {
         const instaLimpo = this.limparInstagram(this.formPerfil.instagram);
         const updateData = {
-          nome: this.formPerfil.nome,
+          nome: this.formPerfil.nome.trim(),
+          empresaHonda: this.formPerfil.empresaHonda.trim(),
+          uf: this.formPerfil.uf,
+          cidade: this.formPerfil.cidade,
           whatsapp: this.formPerfil.whatsapp.replace(/\D/g, ''),
           instagram: instaLimpo
         };
@@ -388,7 +500,9 @@ createApp({
     },
     gerarLinkZap(lead) {
       const num = lead.whatsapp ? lead.whatsapp.replace(/\D/g, '') : '';
-      const msg = encodeURIComponent(`Olá ${lead.nome}! Sou o consultor ${this.consultorLogado.nome} da Honda (${this.consultorLogado.empresaHonda}). Vi sua simulação no Zappmotos para a ${lead.motoInteresse || 'moto Honda'}. Podemos conversar sobre a sua entrada?`);
+      const marca = this.consultorLogado.marca || 'Honda';
+      const loja = this.consultorLogado.empresaHonda ? ` (${this.consultorLogado.empresaHonda})` : '';
+      const msg = encodeURIComponent(`Olá ${lead.nome}! Sou o consultor ${this.consultorLogado.nome} da ${marca}${loja}. Vi sua simulação no Zappmotos para a ${lead.motoInteresse || 'moto'}. Podemos conversar sobre a sua entrada?`);
       return `https://wa.me/55${num}?text=${msg}`;
     },
     exportarCSV() {
@@ -406,11 +520,26 @@ createApp({
       a.click();
     }
   },
-  mounted() {
+  async mounted() {
+    this.carregarEstados();
+
     const consultorSalvo = localStorage.getItem('zappmotos_consultor');
     if (consultorSalvo) {
       try {
-        this.entrarSessao(JSON.parse(consultorSalvo));
+        const parsed = JSON.parse(consultorSalvo);
+        // Revalida o status atualizado direto no Firestore ao abrir o painel
+        const docSnap = await db.collection('consultores').doc(parsed.cpf).get();
+        if (docSnap.exists) {
+          const consultorAtualizado = docSnap.data();
+          const permitido = await this.verificarPermissaoAssinatura(consultorAtualizado);
+          if (permitido) {
+            await this.entrarSessao(consultorAtualizado);
+          } else {
+            this.deslogar();
+          }
+        } else {
+          this.deslogar();
+        }
       } catch (e) {
         console.error("Erro ao restaurar sessão:", e);
       }
